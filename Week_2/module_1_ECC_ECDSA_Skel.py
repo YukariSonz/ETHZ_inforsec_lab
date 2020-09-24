@@ -155,12 +155,13 @@ class Point(object):
         # Write a function that performs a scalar multiplication on the current Point object and returns the resulting Point object 
         # Make sure to check that the scalar is of type int or long
         # Your function need not be "constant-time"
+        new_scalar = scalar % self.q
         if scalar == 0:
             return PointInf(self.curve)
         else:
             result = Point(self.curve, self.x, self.y)
             for i in range(scalar - 1):
-                result.double()
+                result.add(self)
             return result
         # raise NotImplementedError()
 
