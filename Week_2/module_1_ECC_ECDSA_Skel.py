@@ -197,7 +197,7 @@ def KeyGen(params):
     # Write a function that takes as input an ECDSA_Params object and outputs the key pair (x, Q)
     random_scalar = random.randint(0, params.q - 1)
     Q = params.P.scalar_multiply(random_scalar)
-    return (x,Q)
+    return (random_scalar, Q)
     # raise NotImplementedError()
 
 def Sign_FixedNonce(params, k, x, msg):
@@ -208,7 +208,7 @@ def Sign_FixedNonce(params, k, x, msg):
     kp = params.P.scalar_multiply(k)
     while (r == 0 or s == 0):
         r = kp.x % params.q
-        s = mod_inv(k, q) * (h + x * r)
+        s = (mod_inv(k, params.q) * (h + x * r)) % params.q
     return (r,s)
     # raise NotImplementedError()
 
@@ -222,7 +222,7 @@ def Sign(params, x, msg):
     kp = params.P.scalar_multiply(k)
     while (r == 0 or s == 0):
         r = kp.x % params.q
-        s = mod_inv(k, params.q) * (h + x * r)
+        s = (mod_inv(k, params.q) * (h + x * r)) % params.q
     return (r,s)
     # raise NotImplementedError()
 
