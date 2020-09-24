@@ -80,13 +80,20 @@ class PointInf(object):
 
     def double(self):
         # Write a function that doubles a PointInf object.
-        raise NotImplementedError()
+        result = PointInf(self.curve)
+        return result
+        # raise NotImplementedError()
 
     def add(self, other):
         # Write a function that adds a Point object (or a PointInf object) to a PointInf object. 
         # See below for the description of a Point object
         # Make sure to output the correct kind of object depending on whether "other" is a Point object or a PointInf object 
-        raise NotImplementedError()
+        if isinstance(other, PointInf):
+            result = PointInf(self.curve)
+            return result
+        else:
+            return other
+        # raise NotImplementedError()
 
 
 # A point on an elliptic curve is represented as an object of type Point. 
@@ -111,26 +118,51 @@ class Point(object):
     def negate(self):
         # Write a function that negates a Point object and returns the resulting Point object
         # Ths is an optional extension and is not evaluated
-        raise NotImplementedError()
+        new_point = Point(self.curve, x, -y)
+        return new_point
+        # raise NotImplementedError()
 
     def double(self):
         # Write a function that doubles a Point object and returns the resulting Point object
+
+        # I use theta here to represent lambda to avoid the python keyword
         a = self.curve.a
-        theta = ((3 * (self.x ** 2) + a) / (2 * y)) % self.p
-        x_dot = ((theta ** 2) -  (2 * x )) % self.p
-        y_dot = (- (y + theta * (x_dot - x))) % self.p
+        theta = ((3 * (self.x ** 2) + a) / (2 * self.y)) % self.p
+        x_dot = ((theta ** 2) -  (2 * self.x )) % self.p
+        y_dot = (- (self.y + theta * (x_dot - self.x))) % self.p
         return (x_dot, y_dot)
         # raise NotImplementedError()
 
     def add(self, other):
         # Write a function that adds a Point object (or a PointInf object) to the current Point object and returns the resulting Point object
-        raise NotImplementedError()
+        if isinstance(other, PointInf):
+            return self
+        else:
+            if self.is_equal(other):
+                return self.double()
+            else:
+                if (self.x == other.x) and (self.y != other.y):
+                    return PointInf(self.curve)
 
+                slope = (self.y - other.y) / (self.x - other.x) % self.p
+                x_dot = ((slope ** 2) - self.x - other.x) % self.p
+                y_dot = -(self.y + slope * (x_dot - self.x)) % self.p
+                return (x_dot, y_dot)
+        # raise NotImplementedError()
+
+    # Note scalar_multiply with 0 -> PointInf
     def scalar_multiply(self, scalar):
         # Write a function that performs a scalar multiplication on the current Point object and returns the resulting Point object 
         # Make sure to check that the scalar is of type int or long
         # Your function need not be "constant-time"
-        raise NotImplementedError()
+        if scalar == 0:
+            return PointInf(self.curve)
+        else:
+            result = Point(self.curve, self.x, self.y)
+            for i in range(scalar - 1):
+                result.double()
+            return result
+        # raise NotImplementedError()
 
     def scalar_multiply_Montgomery_Ladder(self, scalar):
         # Write a function that performs a "constant-time" scalar multiplication on the current Point object and returns the resulting Point object 
@@ -151,21 +183,53 @@ class ECDSA_Params(object):
 
 def KeyGen(params):
     # Write a function that takes as input an ECDSA_Params object and outputs the key pair (x, Q)
-    raise NotImplementedError()
+    random_scalar = random.randint(0, self.q - 1)
+    Q = self.P.scalar_multiply(random_scalar)
+    return Q
+    # raise NotImplementedError()
 
 def Sign_FixedNonce(params, k, x, msg):
     # Write a function that takes as input an ECDSA_Params object, a fixed nonce k, a signing key x, and a message msg, and outputs a signature (r, s)
-    raise NotImplementedError()
+    h = bits_to_int(hash_message_to_bits(msg)) % self.q
+    r = 0
+    s = 0
+    kp = self.P.scalar_multiply(k)
+    while (r == 0 or s == 0):
+        r = kp.x % self.q
+        s = mod_inv(k, q) * (h + x * r)
+    return (r,s)
+    # raise NotImplementedError()
 
 def Sign(params, x, msg):
     # Write a function that takes as input an ECDSA_Params object, a signing key x, and a message msg, and outputs a signature (r, s)
     # The nonce is to be generated uniformly at random in the appropriate range
-    raise NotImplementedError()
+    k = random.randint(0, self.q - 1 )
+    h = bits_to_int(hash_message_to_bits(msg)) % self.q
+    r = 0
+    s = 0
+    kp = self.P.scalar_multiply(k)
+    while (r == 0 or s == 0):
+        r = kp.x % self.q
+        s = mod_inv(k, q) * (h + x * r)
+    return (r,s)
+    # raise NotImplementedError()
 
 def Verify(params, Q, msg, r, s):
     # Write a function that takes as input an ECDSA_Params object, a verification key Q, a message msg, and a signature (r, s)
     # The output should be either 0 (indicating failure) or 1 (indicating success)
-    raise NotImplementedError()
+    if (1 <= r <= (self.q - 1), 1 <= s <= (self.q - 1) ):
+        w = mod_inv (s, self.q)
+        h = bits_to_int(hash_message_to_bits(msg)) % self.Q
+        u_1 = (w * h) % q
+        u_2 = (w * r) % q
+        Z = self.P.scalar_multiply(u_1) + Q.scalar_multiply(u_2)
+        if (Z.x % q == r):
+            return 1
+        else:
+            return 0
+    else:
+        return 0
+    # raise NotImplementedError()
 
 
 #Parameters for NIST P-256:
