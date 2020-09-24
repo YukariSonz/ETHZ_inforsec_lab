@@ -130,7 +130,7 @@ class Point(object):
         theta = (   (3 * (self.x ** 2) + a) *  mod_inv((2 * self.y), self.p)   ) % self.p
         x_dot = ((theta ** 2) -  (2 * self.x )) % self.p
         y_dot = (- (self.y + theta * (x_dot - self.x))) % self.p
-        return (x_dot, y_dot)
+        return Point(self.curve, x_dot, y_dot)
         # raise NotImplementedError()
 
     def add(self, other):
@@ -144,10 +144,10 @@ class Point(object):
                 if (self.x == other.x) and (self.y != other.y):
                     return PointInf(self.curve)
 
-                slope = (self.y - other.y) / (self.x - other.x) % self.p
+                slope = (self.y - other.y) * mod_inv( (self.x - other.x) , self.p) % self.p
                 x_dot = ((slope ** 2) - self.x - other.x) % self.p
                 y_dot = -(self.y + slope * (x_dot - self.x)) % self.p
-                return (x_dot, y_dot)
+                return Point(self.curve, x_dot, y_dot)
         # raise NotImplementedError()
 
     # Note scalar_multiply with 0 -> PointInf
@@ -155,14 +155,17 @@ class Point(object):
         # Write a function that performs a scalar multiplication on the current Point object and returns the resulting Point object 
         # Make sure to check that the scalar is of type int or long
         # Your function need not be "constant-time"
-        new_scalar = scalar % self.q
+        new_scalar = scalar % self.curve.q
         binary_scalar = str(bin(new_scalar)[2:])
         result = PointInf(self.curve)
         for i in binary_scalar:
-            if i == 1:
-                (result.double()).add(self)
+            if i == '1':
+                result = result.double()
+                result = result.add(self)
+            else:
+                result = result.double()
         return result
-        
+
         # if scalar == 0:
         #     return PointInf(self.curve)
         # else:
@@ -192,17 +195,17 @@ class ECDSA_Params(object):
 
 def KeyGen(params):
     # Write a function that takes as input an ECDSA_Params object and outputs the key pair (x, Q)
-    random_scalar = random.randint(0, self.q - 1)
-    Q = self.P.scalar_multiply(random_scalar)
+    random_scalar = random.randint(0, params.q - 1)
+    Q = params.P.scalar_multiply(random_scalar)
     return Q
     # raise NotImplementedError()
 
 def Sign_FixedNonce(params, k, x, msg):
     # Write a function that takes as input an ECDSA_Params object, a fixed nonce k, a signing key x, and a message msg, and outputs a signature (r, s)
-    h = bits_to_int(hash_message_to_bits(msg)) % self.q
+    h = bits_to_int(hash_message_to_bits(msg), params.q) % params.q
     r = 0
     s = 0
-    kp = self.P.scalar_multiply(k)
+    kp = params.P.scalar_multiply(k)
     while (r == 0 or s == 0):
         r = kp.x % self.q
         s = mod_inv(k, q) * (h + x * r)
@@ -212,26 +215,26 @@ def Sign_FixedNonce(params, k, x, msg):
 def Sign(params, x, msg):
     # Write a function that takes as input an ECDSA_Params object, a signing key x, and a message msg, and outputs a signature (r, s)
     # The nonce is to be generated uniformly at random in the appropriate range
-    k = random.randint(0, self.q - 1 )
-    h = bits_to_int(hash_message_to_bits(msg)) % self.q
+    k = random.randint(0, params.q - 1 )
+    h = bits_to_int(hash_message_to_bits(msg) params.q) % params.q
     r = 0
     s = 0
-    kp = self.P.scalar_multiply(k)
+    kp = params.P.scalar_multiply(k)
     while (r == 0 or s == 0):
-        r = kp.x % self.q
-        s = mod_inv(k, q) * (h + x * r)
+        r = kp.x % params.q
+        s = mod_inv(k, params.q) * (h + x * r)
     return (r,s)
     # raise NotImplementedError()
 
 def Verify(params, Q, msg, r, s):
     # Write a function that takes as input an ECDSA_Params object, a verification key Q, a message msg, and a signature (r, s)
     # The output should be either 0 (indicating failure) or 1 (indicating success)
-    if (1 <= r <= (self.q - 1), 1 <= s <= (self.q - 1) ):
-        w = mod_inv (s, self.q)
-        h = bits_to_int(hash_message_to_bits(msg)) % self.Q
+    if (1 <= r <= (params.q - 1), 1 <= s <= (params.q - 1) ):
+        w = mod_inv (s, params.q)
+        h = bits_to_int(hash_message_to_bits(msg)) % params.Q
         u_1 = (w * h) % q
         u_2 = (w * r) % q
-        Z = self.P.scalar_multiply(u_1) + Q.scalar_multiply(u_2)
+        Z = params.P.scalar_multiply(u_1) + Q.scalar_multiply(u_2)
         if (Z.x % q == r):
             return 1
         else:
