@@ -115,7 +115,12 @@ class Point(object):
 
     def double(self):
         # Write a function that doubles a Point object and returns the resulting Point object
-        raise NotImplementedError()
+        a = self.curve.a
+        theta = ((3 * (self.x ** 2) + a) / (2 * y)) % self.p
+        x_dot = ((theta ** 2) -  (2 * x )) % self.p
+        y_dot = (- (y + theta * (x_dot - x))) % self.p
+        return (x_dot, y_dot)
+        # raise NotImplementedError()
 
     def add(self, other):
         # Write a function that adds a Point object (or a PointInf object) to the current Point object and returns the resulting Point object
