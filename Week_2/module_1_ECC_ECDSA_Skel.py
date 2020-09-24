@@ -160,7 +160,7 @@ class Point(object):
             return PointInf(self.curve)
         else:
             result = Point(self.curve, self.x, self.y)
-            for i in range(scalar - 1):
+            for i in range(new_scalar - 1):
                 result.add(self)
             return result
         # raise NotImplementedError()
