@@ -127,7 +127,7 @@ class Point(object):
 
         # I use theta here to represent lambda to avoid the python keyword
         a = self.curve.a
-        theta = ((3 * (self.x ** 2) + a) / (2 * self.y)) % self.p
+        theta = (   (3 * (self.x ** 2) + a) *  mod_inv((2 * self.y), self.p)   ) % self.p
         x_dot = ((theta ** 2) -  (2 * self.x )) % self.p
         y_dot = (- (self.y + theta * (x_dot - self.x))) % self.p
         return (x_dot, y_dot)
