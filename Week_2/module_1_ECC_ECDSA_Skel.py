@@ -156,13 +156,21 @@ class Point(object):
         # Make sure to check that the scalar is of type int or long
         # Your function need not be "constant-time"
         new_scalar = scalar % self.q
-        if scalar == 0:
-            return PointInf(self.curve)
-        else:
-            result = Point(self.curve, self.x, self.y)
-            for i in range(new_scalar - 1):
-                result.add(self)
-            return result
+        binary_scalar = str(bin(new_scalar)[2:])
+        result = PointInf(self.curve)
+        for i in binary_scalar:
+            if i == 1:
+                (result.double()).add(self)
+        return result
+        
+        # if scalar == 0:
+        #     return PointInf(self.curve)
+        # else:
+        #     result = Point(self.curve, self.x, self.y)
+        #     for i in binary_scalar:
+        #         if i == 1:
+
+        #     return result
         # raise NotImplementedError()
 
     def scalar_multiply_Montgomery_Ladder(self, scalar):
