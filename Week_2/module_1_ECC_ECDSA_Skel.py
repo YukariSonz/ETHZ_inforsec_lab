@@ -76,7 +76,8 @@ class PointInf(object):
     def negate(self):
         # Write a function that negates a PointInf object.        
         # Ths is an optional extension and is not evaluated
-        raise NotImplementedError()
+        return PointInf(self.curve)
+        # raise NotImplementedError()
 
     def double(self):
         # Write a function that doubles a PointInf object.
