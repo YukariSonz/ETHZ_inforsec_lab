@@ -134,7 +134,7 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
         B_SVP.append(new_row)
     new_u = cvp_list_u
 
-    M = L # M to be chosen
+    M = ( (n/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
     new_u.append(M)
     B_SVP.append(new_u)
     return B_SVP # B_SVP have been pre-processed
@@ -150,7 +150,7 @@ def solve_cvp(cvp_basis_B, cvp_list_u):
     # Preprocessing B
     
     B_matrix = IntegerMatrix.from_matrix(cvp_basis_B)
-    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(cvp_list_u))
+    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(cvp_list_u)))
     v0 = CVP.closest_vector(B_BKZ, cvp_list_u)
     # origional_v0 = [v/(2^(L+1)) for v in v0]
     return v0
@@ -163,7 +163,7 @@ def solve_svp(svp_basis_B):
     # NOTE: Recall from the lecture and also from the exercise session that for ECDSA cryptanalysis based on partial nonces, you might want your function to return the *second* shortest vector. 
     # If required, figure out how to get the in-built SVP-solver functions from the fpylll library to return the second shortest vector
     B_matrix = IntegerMatrix.from_matrix(svp_basis_B)
-    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(cvp_list_u)))
+    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(B_matrix[0])))
     v0 = SVP.shortest_vector(B_BKZ)
     v0_2 = B_BKZ[1]
     if v0.norm() >= v0_2.norm():
@@ -197,7 +197,7 @@ def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     f_List = solve_svp(svp_basis_B)
     f_List_origional = [f/(2^(L+1)) for f in f_List]
     f_l = f_List_origional
-    f_l.pop()
+    # f_l.pop()
 
     # The function should recover the secret signing key x from the output of the SVP solver and output the same
     v_List = f_l
