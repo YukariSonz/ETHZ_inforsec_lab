@@ -37,7 +37,7 @@ def recover_x_repeated_nonce(h_1, r_1, s_1, h_2, r_2, s_2, q):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA
     # The function is given the (hashed-message, signature) pairs (h_1, r_1, s_1) and (h_2, r_2, s_2) generated using the same nonce
     # The function should compute and return the secret signing key x
-    x = ( ( (h_1 * s_2) - (h_2 * s_1) ) * ( (r_2 * s_1) - (r_1 * s_2) ) ) % q
+    x = ( ( (h_1 * s_2) - (h_2 * s_1) ) * mod_inv(( (r_2 * s_1) - (r_1 * s_2) ), q) ) % q
     return x
     # raise NotImplementedError()
 
