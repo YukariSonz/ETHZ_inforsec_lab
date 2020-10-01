@@ -134,7 +134,8 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
         B_SVP.append(new_row)
     new_u = cvp_list_u
 
-    M = ( (n/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
+    M = ( (num_Samples/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
+    M = 2**(N-L-1)
     new_u.append(M)
     B_SVP.append(new_u)
     return B_SVP # B_SVP have been pre-processed
@@ -147,12 +148,11 @@ def solve_cvp(cvp_basis_B, cvp_list_u):
     # The function should output the solution vector v (to be implemented as a list)
     # NOTE: The basis matrix B should be processed appropriately before being passes to the fpylll CVP-solver. See lab sheet for more details
 
-    # Preprocessing B
     
     B_matrix = IntegerMatrix.from_matrix(cvp_basis_B)
-    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(cvp_list_u)))
+    # B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(cvp_list_u)))
+    B_LLL = LLL.reduction(B_matrix)
     v0 = CVP.closest_vector(B_BKZ, cvp_list_u)
-    # origional_v0 = [v/(2^(L+1)) for v in v0]
     return v0
     # raise NotImplementedError()
 
@@ -163,15 +163,15 @@ def solve_svp(svp_basis_B):
     # NOTE: Recall from the lecture and also from the exercise session that for ECDSA cryptanalysis based on partial nonces, you might want your function to return the *second* shortest vector. 
     # If required, figure out how to get the in-built SVP-solver functions from the fpylll library to return the second shortest vector
     B_matrix = IntegerMatrix.from_matrix(svp_basis_B)
-    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(B_matrix[0])))
-    v0 = SVP.shortest_vector(B_BKZ)
-    v0_2 = B_BKZ[1]
-    if v0.norm() >= v0_2.norm():
-        # origional_v0 = [v/(2^(L+1)) for v in v0]
-        return v0
-    else:
-        # origional_v0_2 = [v/(2^(L+1)) for v in v0_2]
-        return v0_2
+    # B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(B_matrix[0])))
+    B_LLL = LLL.reduction(B_matrix)
+    v0 = SVP.shortest_vector(B_LLL)
+    v0_2 = B_LLL[1]
+    return v0_2
+    # if v0.norm() >= v0_2.norm():
+    #     return v0
+    # else:
+    #     return v0_2
     # raise NotImplementedError()
 
 
