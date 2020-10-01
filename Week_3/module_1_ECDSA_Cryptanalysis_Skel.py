@@ -9,39 +9,64 @@ from fpylll import SVP
 
 
 def egcd(a, b):
-    # Implement the Euclidean algorithm for gcd computation
-    raise NotImplementedError()
+    if a == 0:
+        return b, 0, 1
+    else:
+        g, y, x = egcd(b % a, a)
+        return g, x - (b // a) * y, y
 
+# Modular inversion computation
 def mod_inv(a, p):
-    # Implement a function to compute the inverse of a modulo p
-    # Hint: Use the gcd algorithm implemented above
-    raise NotImplementedError()
+    if a < 0:
+        return p - mod_inv(-a, p)
+    g, x, y = egcd(a, p)
+    if g != 1:
+        raise ArithmeticError("Modular inverse does not exist")
+    else:
+        return x % p
 
 def recover_x_known_nonce(k, h, r, s, q):
     # Implement the "known nonce" cryptanalytic attack on ECDSA
     # The function is given the nonce k, (h, r, s) and the base point order q
     # The function should compute and return the secret signing key x
-    raise NotImplementedError()
+    x = ( mod_inv(r, q) * ( (k * s) - h ) ) % q 
+    return x
+    # raise NotImplementedError()
 
 def recover_x_repeated_nonce(h_1, r_1, s_1, h_2, r_2, s_2, q):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA
     # The function is given the (hashed-message, signature) pairs (h_1, r_1, s_1) and (h_2, r_2, s_2) generated using the same nonce
     # The function should compute and return the secret signing key x
-    raise NotImplementedError()
+    x = ( ( (h_1 * s_2) - (h_2 * s_1) ) * ( (r_2 * s_1) - (r_1 * s_2) ) ) % q
+    return x
+    # raise NotImplementedError()
 
 
 def MSB_to_Padded_Int(N, L, list_k_MSB):
     # Implement a function that does the following: 
     # Let a is the integer represented by the L most significant bits of the nonce k 
     # The function should return a.2^{N - L} + 2^{N -L -1}
-    raise NotImplementedError()
+    # N = bit length
+    # L = length of MSB
+    a = ""
+    for i in (list_k_MSB):
+        a += list_k_MSB
+    a_int = int(a, 2)
+    mid_point = (a_int * 2^(N-L))  + 2^(N-L-1)
+    return mid_point
+    # raise NotImplementedError()
 
 
 def setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q):
     # Implement a function that sets up a single instance for the hidden number problem (HNP)
     # The function is given a list of the L most significant bts of the N-bit nonce k, along with (h, r, s) and the base point order q
     # The function should return (t, u) computed as described in the lectures
-    raise NotImplementedError()
+    t = ( r * mod_inv(s,q) ) % q
+    z = ( h * mod_inv(s,q) ) % q
+    mid_point = MSB_to_Padded_Int(N, L, list_k_MSB)
+    u = mid_point + z
+    return (t,u)
+    # raise NotImplementedError()
 
 
 def setup_hnp_all_samples(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q):
@@ -49,14 +74,49 @@ def setup_hnp_all_samples(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, 
     # For each instance, the function is given a list the L most significant bits of the N-bit nonce k, along with (h, r, s) and the base point order q
     # The function should return a list of t values and a list of u values computed as described in the lectures
     # Hint: Use the function you implemented above to set up the t and u values for each instance
-    raise NotImplementedError()
+    # t_u_list = []
+    t_list = []
+    u_list = []
+    for i in range(num_Samples):
+        list_k_MSB = listoflists_k_MSB[i]
+        h = list_h[i]
+        r = list_r[i]
+        s = list_s[i]
+        (t,u) = setup_hnp_single_sample(N, L, list_k_MSB, h, r, s, q)
+        t = (t,u)[0]
+        u = (t,u)[1]
+        t_list.append(t)
+        u_list.append(u)
+    return (t_list, u_list)
+    # raise NotImplementedError()
 
 def hnp_to_cvp(N, L, num_Samples, list_t, list_u, q):
     # Implement a function that takes as input an instance of HNP and converts it into an instance of the closest vector problem (CVP)
     # The function is given as input a list of t values, a list of u values and the base point order q
     # The function should return the CVP basis matrix B (to be implemented as a nested list) and the CVP target vector u (to be implemented as a list)
     # NOTE: The basis matrix B and the CVP target vector u should be scaled appropriately. Refer lecture slides and lab sheet for more details 
-    raise NotImplementedError()
+    u_cvp = list_u
+    u_cvp.append(0)
+    B_cvp = []
+    for i in range(num_Samples):
+        row = [0] * (num_Samples + 1 )
+        row[i] = q
+        B_cvp.append(row)
+    t_cvp = list_t
+    t_cvp.append(1/(2^(L+1)))
+    B_cvp.append(t_cvp)
+
+    B_processed = []
+    for row in B_cvp:
+        new_row = []
+        for data in row:
+            new_data = data * (2^(L+1))
+            new_row.append(new_data)
+        B_processed.append(new_row)
+
+        
+    return (B_processed, u_cvp)
+    # raise NotImplementedError()
 
 def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     # Implement a function that takes as input an instance of CVP and converts it into an instance of the shortest vector problem (SVP)
@@ -64,7 +124,21 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     # The function is given as input a CVP basis matrix B and the CVP target vector u
     # The function should use the Kannan embedding technique to output the corresponding SVP basis matrix B' of apropriate dimensions.
     # The SVP basis matrix B' should again be implemented as a nested list
-    raise NotImplementedError()
+    B_SVP = []
+    for row in cvp_basis_B:
+        new_row = []
+        for data in row:
+            new_data = data * (2^(L+1))
+            new_row.append(new_data)
+        new_row.append(0)
+        B_SVP.append(new_row)
+    new_u = cvp_list_u
+
+    M = 12 # M to be chosen
+    new_u.append(M)
+    B_SVP.append(new_u)
+    return B_SVP # B_SVP have been pre-processed
+    # raise NotImplementedError()
 
 
 def solve_cvp(cvp_basis_B, cvp_list_u):
@@ -72,7 +146,15 @@ def solve_cvp(cvp_basis_B, cvp_list_u):
     # The function is given as input a CVP basis matrix B and the CVP target vector u
     # The function should output the solution vector v (to be implemented as a list)
     # NOTE: The basis matrix B should be processed appropriately before being passes to the fpylll CVP-solver. See lab sheet for more details
-    raise NotImplementedError()
+
+    # Preprocessing B
+    
+    B_matrix = IntegerMatrix.from_matrix(cvp_basis_B)
+    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(B_matrix)))
+    v0 = CVP.closest_vector(B_BKZ, cvp_list_u)
+    # origional_v0 = [v/(2^(L+1)) for v in v0]
+    return v0
+    # raise NotImplementedError()
 
 def solve_svp(svp_basis_B):
     # Implement a function that takes as input an instance of SVP and solves it using in-built SVP-solver functions from the fpylll library
@@ -80,7 +162,17 @@ def solve_svp(svp_basis_B):
     # The function should output a vector v (to be implemented as a list)
     # NOTE: Recall from the lecture and also from the exercise session that for ECDSA cryptanalysis based on partial nonces, you might want your function to return the *second* shortest vector. 
     # If required, figure out how to get the in-built SVP-solver functions from the fpylll library to return the second shortest vector
-    raise NotImplementedError()
+    B_matrix = IntegerMatrix.from_matrix(svp_basis_B)
+    B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(B_matrix)))
+    v0 = SVP.shortest_vector(B_BKZ)
+    v0_2 = B_BKZ[1]
+    if v0.norm() >= v0_2.norm():
+        # origional_v0 = [v/(2^(L+1)) for v in v0]
+        return v0
+    else:
+        # origional_v0_2 = [v/(2^(L+1)) for v in v0_2]
+        return v0_2
+    # raise NotImplementedError()
 
 
 def recover_x_partial_nonce_CVP(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q):
@@ -91,7 +183,9 @@ def recover_x_partial_nonce_CVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     cvp_basis_B, cvp_list_u = hnp_to_cvp(N, L, num_Samples, list_t, list_u, q)
     v_List = solve_cvp(cvp_basis_B, cvp_list_u)
     # The function should recover the secret signing key x from the output of the CVP solver and output the same
-    raise NotImplementedError()
+    x = v_List[-1]
+    return x
+    # raise NotImplementedError()
 
 def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q):
     # Implement the "repeated nonces" cryptanalytic attack on ECDSA using the in-built CVP-solver functions from the fpylll library
@@ -101,8 +195,16 @@ def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     cvp_basis_B, cvp_list_u = hnp_to_cvp(N, L, num_Samples, list_t, list_u, q)
     svp_basis_B = cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u)
     f_List = solve_svp(svp_basis_B)
+    f_List_origional = [f/(2^(L+1)) for f in f_List]
+    f_l = f_List_origional
+    f_l.pop()
+
     # The function should recover the secret signing key x from the output of the SVP solver and output the same
-    raise NotImplementedError()
+    v_List = f_l - cvp_list_u
+    x = v_List[-1]
+    x = x * 2^(L+1)
+    return x
+    # raise NotImplementedError()
 
 
 
