@@ -50,7 +50,7 @@ def MSB_to_Padded_Int(N, L, list_k_MSB):
     # L = length of MSB
     a = ""
     for i in (list_k_MSB):
-        a += list_k_MSB
+        a += str(i)
     a_int = int(a, 2)
     mid_point = (a_int * 2^(N-L))  + 2^(N-L-1)
     return mid_point
@@ -110,11 +110,11 @@ def hnp_to_cvp(N, L, num_Samples, list_t, list_u, q):
     for row in B_cvp:
         new_row = []
         for data in row:
-            new_data = data * (2^(L+1))
+            new_data = int(data * (2^(L+1)))
             new_row.append(new_data)
         B_processed.append(new_row)
 
-        
+
     return (B_processed, u_cvp)
     # raise NotImplementedError()
 
@@ -128,7 +128,7 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     for row in cvp_basis_B:
         new_row = []
         for data in row:
-            new_data = data * (2^(L+1))
+            new_data = int(data * (2^(L+1)))
             new_row.append(new_data)
         new_row.append(0)
         B_SVP.append(new_row)
@@ -200,9 +200,11 @@ def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     f_l.pop()
 
     # The function should recover the secret signing key x from the output of the SVP solver and output the same
-    v_List = f_l - cvp_list_u
+    v_List = f_l
+    for i in range(len(cvp_list_u)):
+        v_List[i] = v_List[i] - cvp_list_u[i]
     x = v_List[-1]
-    x = x * 2^(L+1)
+    x = x * (2^(L+1))
     return x
     # raise NotImplementedError()
 
