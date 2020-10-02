@@ -131,7 +131,7 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     new_u = cvp_list_u
 
     # M = ( (num_Samples/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
-    M = int((num_Samples+1) ** 0.5) * (2**(L+1)) * (2**(N-L-1))
+    M = int((num_Samples + 1 ) ** 0.5 * (2**N) )
     new_u.append(M)
     B_SVP.append(new_u)
     return B_SVP # B_SVP have been pre-processed
@@ -195,7 +195,7 @@ def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     f_List = solve_svp(svp_basis_B)
     v_List = [f for f in f_List]
     for i in range(len(cvp_list_u)):
-        v_List[i] = abs(v_List[i] - cvp_list_u[i])
+        v_List[i] = cvp_list_u[i] - v_List[i] 
     x = v_List[-2]
     x = x % q
     return x
