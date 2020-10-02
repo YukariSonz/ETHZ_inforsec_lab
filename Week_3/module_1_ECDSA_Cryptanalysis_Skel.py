@@ -125,16 +125,13 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     # The SVP basis matrix B' should again be implemented as a nested list
     B_SVP = []
     for row in cvp_basis_B:
-        new_row = []
-        for data in row:
-            new_data = int(data * (2**(L+1)))
-            new_row.append(new_data)
+        new_row = row
         new_row.append(0)
         B_SVP.append(new_row)
     new_u = cvp_list_u
 
     # M = ( (num_Samples/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
-    M = 2**(N-L-1)
+    M = int((num_Samples+1) ** 0.5) * (2**(L+1)) * (2**(N-L-1))
     new_u.append(M)
     B_SVP.append(new_u)
     return B_SVP # B_SVP have been pre-processed
@@ -183,8 +180,9 @@ def recover_x_partial_nonce_CVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     v_List = solve_cvp(cvp_basis_B, cvp_list_u)
     # The function should recover the secret signing key x from the output of the CVP solver and output the same
     x = v_List[-1]
+    x = x % q
     # As it's possible that ouput x-q
-    return x%q
+    return x
     # raise NotImplementedError()
 
 def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q):
@@ -195,16 +193,11 @@ def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     cvp_basis_B, cvp_list_u = hnp_to_cvp(N, L, num_Samples, list_t, list_u, q)
     svp_basis_B = cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u)
     f_List = solve_svp(svp_basis_B)
-    f_List_origional = [f/(2**(L+1)) for f in f_List]
-    f_l = f_List_origional
-    # f_l.pop()
-
-    # The function should recover the secret signing key x from the output of the SVP solver and output the same
-    v_List = f_l
+    v_List = [f for f in f_List]
     for i in range(len(cvp_list_u)):
-        v_List[i] = v_List[i] - cvp_list_u[i]
-    x = v_List[-1]
-    x = x * (2**(L+1))
+        v_List[i] = abs(v_List[i] - cvp_list_u[i])
+    x = v_List[-2]
+    x = x % q
     return x
     # raise NotImplementedError()
 
