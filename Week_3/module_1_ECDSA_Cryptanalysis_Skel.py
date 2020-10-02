@@ -113,9 +113,8 @@ def hnp_to_cvp(N, L, num_Samples, list_t, list_u, q):
             new_data = int(data * ( 2**(L+1) ) )
             new_row.append(new_data)
         B_processed.append(new_row)
-
-
-    return (B_processed, u_cvp)
+    u_processed = [u * 2**(L+1) for u in u_cvp]
+    return (B_processed, u_processed)
     # raise NotImplementedError()
 
 def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
@@ -134,7 +133,7 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
         B_SVP.append(new_row)
     new_u = cvp_list_u
 
-    M = ( (num_Samples/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
+    # M = ( (num_Samples/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
     M = 2**(N-L-1)
     new_u.append(M)
     B_SVP.append(new_u)
