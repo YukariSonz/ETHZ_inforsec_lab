@@ -183,7 +183,8 @@ def recover_x_partial_nonce_CVP(N, L, num_Samples, listoflists_k_MSB, list_h, li
     v_List = solve_cvp(cvp_basis_B, cvp_list_u)
     # The function should recover the secret signing key x from the output of the CVP solver and output the same
     x = v_List[-1]
-    return x
+    # As it's possible that ouput x-q
+    return x%q
     # raise NotImplementedError()
 
 def recover_x_partial_nonce_SVP(N, L, num_Samples, listoflists_k_MSB, list_h, list_r, list_s, q):
