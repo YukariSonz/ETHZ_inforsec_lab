@@ -131,7 +131,7 @@ def cvp_to_svp_Kannan_Embedding(N, L, num_Samples, cvp_basis_B, cvp_list_u):
     new_u = cvp_list_u
 
     # M = ( (num_Samples/(2 * math.pi * math.exp(1))) ** 0.5) * B_SVP[1][0] # M to be chosen
-    M = int((num_Samples + 1 ) ** 0.5 * (2**N) )
+    M = int((num_Samples + 1 ) ** 0.5 * (2**N) / 2 )
     new_u.append(M)
     B_SVP.append(new_u)
     return B_SVP # B_SVP have been pre-processed
