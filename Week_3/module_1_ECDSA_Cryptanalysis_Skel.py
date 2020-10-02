@@ -148,7 +148,7 @@ def solve_cvp(cvp_basis_B, cvp_list_u):
     B_matrix = IntegerMatrix.from_matrix(cvp_basis_B)
     # B_BKZ = BKZ.reduction(B_matrix, BKZ.Param(len(cvp_list_u)))
     B_LLL = LLL.reduction(B_matrix)
-    v0 = CVP.closest_vector(B_BKZ, cvp_list_u)
+    v0 = CVP.closest_vector(B_LLL, cvp_list_u)
     return v0
     # raise NotImplementedError()
 
