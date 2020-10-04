@@ -1,0 +1,7 @@
+diff unit_test_point_addition_outputs.txt unit_test_point_addition_outputs_temp.txt
+diff unit_test_scalar_mult_outputs.txt unit_test_scalar_mult_outputs_temp.txt
+diff unit_test_sign_fixed_nonce_outputs.txt unit_test_sign_fixed_nonce_outputs_temp.txt
+diff unit_test_verify_outputs.txt unit_test_verify_outputs_temp.txt
+
+
+
