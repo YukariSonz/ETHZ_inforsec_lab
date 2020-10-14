@@ -80,11 +80,12 @@ class Handshake:
 
 
 		cipher_suite_raw = self.csuites
-		cipher_suite = [i.to_bytes(2, 'big') for i in cipher_suite_raw]
+		cipher_suite = bytes()
+		for i in cipher_suite_raw:
+			cipher_suite += i.to_bytes(2,'big')
 		csuites_len = len(cipher_suite).to_bytes(2, 'big')
 
-		legacy_compression = (0x00)
-		legacy_compression = legacy_compression.to_bytes(1, 'big')
+		legacy_compression = (0x00).to_bytes(1, 'big')
 		legacy_compression_len = len(legacy_compression).to_bytes(1,'big')
 
 		
@@ -96,12 +97,12 @@ class Handshake:
 		key_share_extension_all = tls_extensions.prep_keyshare_ext(self.extensions)
 
 		key_share_extension = key_share_extension_all[0]
-		self.ec_sec_keys = key_share_extension_all
+		self.ec_sec_keys = key_share_extension_all[1]
 
 		extension_set = supported_version + supported_groups + key_share_extension + signature_algorithms
 		
 		exten_len = len(extension_set).to_bytes(2, 'big')
-		extension_set = extension_set.to_bytes(2, 'big')
+		# extension_set = extension_set.to_bytes(2, 'big')
 
 		msg = version + random_number + legacy_sess_id_len + legacy_sess_id + csuites_len + cipher_suite + legacy_compression_len + legacy_compression + exten_len + extension_set
 		chelo_msg = self.attach_handshake_header(tls_constants.CHELO_TYPE, msg)
@@ -199,6 +200,7 @@ class Handshake:
 			return alert_msg
 
 	def tls_13_process_server_hello(self, shelo_msg):
+		# msg = legacy_vers + random + legacy_sess_id_len + legacy_sess_id + csuite_bytes + legacy_compression + exten_len + 	extensions
 		shelo = self.process_handshake_header(tls_constants.SHELO_TYPE, shelo_msg)
 		curr_pos = 0
 
@@ -214,21 +216,16 @@ class Handshake:
 		self.sid = shelo[curr_pos:curr_pos+shelo_sess_id_len]
 		curr_pos = curr_pos + shelo_sess_id_len
 
-		csuites_len = int.from_bytes(shelo[curr_pos:curr_pos+tls_constants.CSUITE_LEN_LEN], 'big')
-		curr_pos = curr_pos + tls_constants.CSUITE_LEN_LEN
-		self.remote_csuites = shelo[curr_pos:curr_pos+csuites_len]
-		curr_pos = curr_pos + csuites_len
-		self.num_remote_csuites = csuites_len//tls_constants.CSUITE_LEN
-		self.csuite = int.from_bytes(self.sid, "big")
-		
-		comp_len = int.from_bytes(shelo[curr_pos:curr_pos+tls_constants.COMP_LEN_LEN], 'big')
-		curr_pos = curr_pos + tls_constants.COMP_LEN_LEN
+		csuites_bytes = shelo[curr_pos:curr_pos+ 2 ]
+		self.csuite = int.from_bytes(csuites_bytes, "big")
+		curr_pos = curr_pos + 2
+
 		legacy_comp = shelo[curr_pos]
 		if (legacy_comp != 0x00):
 			alert_msg = tls_prepare_alert(tls_constants.TLS_ILLEGAL_PARA)
 			print("Invalid Legacy Compression Field")
 			return alert_msg
-		curr_pos = curr_pos + comp_len
+		curr_pos = curr_pos + 1
 
 		exts_len = int.from_bytes(shelo[curr_pos:curr_pos+tls_constants.EXT_LEN_LEN], 'big')
 		curr_pos = curr_pos + tls_constants.EXT_LEN_LEN
@@ -243,17 +240,21 @@ class Handshake:
 			curr_ext_pos = curr_ext_pos + 2
 			ext_bytes = self.remote_extensions[curr_ext_pos:curr_ext_pos+ext_len]
 			if (ext_type == tls_constants.SUPPORT_VERS_TYPE):
-				self.neg_version = int.from_bytes(ext_bytes)
+				self.neg_version = int.from_bytes(ext_bytes, 'big')
 			if (ext_type == tls_constants.SUPPORT_GROUPS_TYPE):
-				self.neg_group = int.from_bytes(ext_bytes)
+				self.neg_group = int.from_bytes(ext_bytes, 'big')
 			if (ext_type == tls_constants.KEY_SHARE_TYPE):
-				# ec_pub = tls_crypto.convert_x_y_bytes_ec_pub(ext_bytes, self.neg_group)
 				extension_position = curr_ext_pos
 				group_name = int.from_bytes(self.remote_extensions[extension_position:extension_position+2], 'big')
-				# self.neg_group = group_name
 				extension_position = extension_position + 2
-				# len_key = ext_len - 2
-				key_change = self.remote_extensions[extension_position:extension_position+2]
+
+				len_public_key = self.remote_extension[extension_position:extension_positions+2]
+				extension_position = extension_position + 2
+
+				legacy_form = int.from_bytes(self.remote_extensions[extension_position:extension_position+1])
+				extension_position = extension_position + 1
+
+				key_change = self.remote_extensions[extension_position:]
 
 				ec_pub = tls_crypto.convert_x_y_bytes_ec_pub(key_change, group_name)
 				self.ec_pub_key = ec_pub
@@ -262,17 +263,23 @@ class Handshake:
 			curr_ext_pos = curr_ext_pos + ext_len
 
 		# Compute DH Secret value
-		ec_sec_key = self.ec_sec_keys[1]
-		ecdh_secret_point = tls_crypto.ec_dh(ec_sec_keys, self.ec_pub_key)
-		ecdh_secrt = tls_crypto.point_to_secret(ecdh_secret_point, self.neg_group)
+		ec_sec_key = self.ec_sec_keys[self.neg_group]
+		ecdh_secret_point = tls_crypto.ec_dh(ec_sec_key, self.ec_pub_key)
+		ecdh_secret = tls_crypto.point_to_secret(ecdh_secret_point, self.neg_group)
 		
 		self.early_secret = tls_crypto.tls_extract_secret(self.csuite, None, None)
-		derived_early_secret = tls_crypto.tls_derive_secret(self.csuite, early_secret, "derived".encode(), "".encode())
+		derived_early_secret = tls_crypto.tls_derive_secret(self.csuite, self.early_secret, "derived".encode(), "".encode())
 		handshake_secret = tls_crypto.tls_extract_secret(self.csuite, ecdh_secret,derived_early_secret)
-		self.local_hs_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "s hs traffic".encode(), self.transcript)
-		self.remote_hs_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "c hs traffic".encode(), self.transcript)
+		self.local_hs_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "c hs traffic".encode(), self.transcript)
+		self.remote_hs_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "s hs traffic".encode(), self.transcript)
+
 		derived_hs_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "derived".encode(), "".encode())
+
 		self.master_secret = tls_crypto.tls_extract_secret(self.csuite, None, derived_hs_secret)
+		# self.local_ap_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, self.master_secret, "c ap traffic".encode(), transcript_hash)
+		# self.remote_ap_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, self.master_secret, "s ap traffic".encode(), transcript_hash)
+
+		
 
 		return 0
 		# raise NotImplementedError
@@ -351,14 +358,8 @@ class Handshake:
 			pk = tls_crypto.get_rsa_pk_from_cert(self.server_cert_string)
 		elif signature_scheme in ECDSA:
 			pk = tls_crypto.get_ecdsa_pk_from_cert(self.server_cert_string)
-			
 		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
-		tls_crypto.tls_verify_signature(signature_scheme, verify_message, tls_constants.SERVER_FLAG, pk)
-
-
-		
-
-
+		tls_crypto.tls_verify_signature(signature_scheme, transcript_hash, tls_constants.SERVER_FLAG, singature, pk)
 		self.transcript = self.transcript + verify_msg
 
 		return 0
