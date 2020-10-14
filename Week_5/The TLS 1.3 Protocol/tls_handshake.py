@@ -70,21 +70,22 @@ class Handshake:
 		return ptxt_msg
 
 	def tls_13_client_hello(self):
-		version = 0x0303
+		version = tls_constants.LEGACY_VERSION.to_bytes(2, 'big')
 		random_number = get_random_bytes(32)
 
-		legacy_sess_id = self.sid
-		legacy_sess_id = legacy_sess_id.to_bytes(1, 'big')
+		legacy_sess_id = get_random_bytes(32)
+		self.sid = legacy_sess_id
+		# legacy_sess_id = legacy_sess_id.to_bytes(1, 'big')
 		legacy_sess_id_len = len(self.sid).to_bytes(1, 'big')
 
 
-		cipher_suite = self.csuite
+		cipher_suite_raw = self.csuites
+		cipher_suite = [i.to_bytes(2, 'big') for i in cipher_suite_raw]
 		csuites_len = len(cipher_suite).to_bytes(2, 'big')
-		cipher_suite = cipher_suite.to_bytes(2, 'big')
 
 		legacy_compression = (0x00)
-		legacy_compression_len = len(legacy_compression).to_bytes(1,'big')
 		legacy_compression = legacy_compression.to_bytes(1, 'big')
+		legacy_compression_len = len(legacy_compression).to_bytes(1,'big')
 
 		
 		supported_version = tls_extensions.prep_support_vers_ext(self.extensions)
@@ -235,30 +236,30 @@ class Handshake:
 		self.transcript = self.transcript + shelo_msg
 		
 		curr_ext_pos = 0
-			while (curr_ext_pos < len(self.remote_extensions)):
-				ext_type = int.from_bytes(self.remote_extensions[curr_ext_pos:curr_ext_pos+2], 'big')
-				curr_ext_pos = curr_ext_pos + 2
-				ext_len = int.from_bytes(self.remote_extensions[curr_ext_pos:curr_ext_pos+2], 'big')
-				curr_ext_pos = curr_ext_pos + 2
-				ext_bytes = self.remote_extensions[curr_ext_pos:curr_ext_pos+ext_len]
-				if (ext_type == tls_constants.SUPPORT_VERS_TYPE):
-					self.neg_version = int.from_bytes(ext_bytes)
-				if (ext_type == tls_constants.SUPPORT_GROUPS_TYPE):
-					self.neg_group = int.from_bytes(ext_bytes)
-				if (ext_type == tls_constants.KEY_SHARE_TYPE):
-					# ec_pub = tls_crypto.convert_x_y_bytes_ec_pub(ext_bytes, self.neg_group)
-					extension_position = curr_ext_pos
-					group_name = int.from_bytes(self.remote_extensions[extension_position:extension_position+2], 'big')
-					# self.neg_group = group_name
-					extension_position = extension_position + 2
-					# len_key = ext_len - 2
-					key_change = self.remote_extensions[extension_position:extension_position+2]
+		while (curr_ext_pos < len(self.remote_extensions)):
+			ext_type = int.from_bytes(self.remote_extensions[curr_ext_pos:curr_ext_pos+2], 'big')
+			curr_ext_pos = curr_ext_pos + 2
+			ext_len = int.from_bytes(self.remote_extensions[curr_ext_pos:curr_ext_pos+2], 'big')
+			curr_ext_pos = curr_ext_pos + 2
+			ext_bytes = self.remote_extensions[curr_ext_pos:curr_ext_pos+ext_len]
+			if (ext_type == tls_constants.SUPPORT_VERS_TYPE):
+				self.neg_version = int.from_bytes(ext_bytes)
+			if (ext_type == tls_constants.SUPPORT_GROUPS_TYPE):
+				self.neg_group = int.from_bytes(ext_bytes)
+			if (ext_type == tls_constants.KEY_SHARE_TYPE):
+				# ec_pub = tls_crypto.convert_x_y_bytes_ec_pub(ext_bytes, self.neg_group)
+				extension_position = curr_ext_pos
+				group_name = int.from_bytes(self.remote_extensions[extension_position:extension_position+2], 'big')
+				# self.neg_group = group_name
+				extension_position = extension_position + 2
+				# len_key = ext_len - 2
+				key_change = self.remote_extensions[extension_position:extension_position+2]
 
-					ec_pub = tls_crypto.convert_x_y_bytes_ec_pub(key_change, group_name)
-					self.ec_pub_key = ec_pub
+				ec_pub = tls_crypto.convert_x_y_bytes_ec_pub(key_change, group_name)
+				self.ec_pub_key = ec_pub
 					
 
-				curr_ext_pos = curr_ext_pos + ext_len
+			curr_ext_pos = curr_ext_pos + ext_len
 
 		# Compute DH Secret value
 		ec_sec_key = self.ec_sec_keys[1]
@@ -336,20 +337,20 @@ class Handshake:
 
 	def tls_13_process_server_cert_verify(self, verify_msg):
 		verify_message = self.process_handshake_header(tls_constants.CVFY_TYPE, verify_msg)
-		msg_len = len(cert)
+		msg_len = len(verify_msg)
 		curr_pos = 0
 		signature_scheme = int.from_bytes(verify_message[curr_pos: curr_pos + 2], 'big')
 		curr_pos += 2
 		len_sig_bytes= int.from_bytes(verify_message[curr_pos: curr_pos + 2], 'big')
 		curr_pos += 2
-		signature = [curr_pos:]
+		signature = verify_msg[curr_pos:]
 		RSA = [0x0401, 0x0501, 0x0601]
 		ECDSA = [0x0403, 0x0503, 0x0603]
 		pk = None
 		if signature_scheme in RSA:
-			pk = tls_crypto.get_rsa_pk_from_cert(self.cert_string)
+			pk = tls_crypto.get_rsa_pk_from_cert(self.server_cert_string)
 		elif signature_scheme in ECDSA:
-			pk = tls_crypto.get_ecdsa_pk_from_cert(self.cert_string)
+			pk = tls_crypto.get_ecdsa_pk_from_cert(self.server_cert_string)
 			
 		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
 		tls_crypto.tls_verify_signature(signature_scheme, verify_message, tls_constants.SERVER_FLAG, pk)
@@ -379,7 +380,7 @@ class Handshake:
 		tag= self.process_handshake_header(tls_constants.FINI_TYPE, fin_msg)
 		finished_key = tls_crypto.tls_finished_key_derive(self.csuite, self.remote_hs_traffic_secret)
 		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
-		tls_finished_mac_verify(self.csuite, finished_key, transcript_hash, tag)
+		tls_crypto.tls_finished_mac_verify(self.csuite, finished_key, transcript_hash, tag)
 
 		self.transcript = self.transcript + fin_msg
 
