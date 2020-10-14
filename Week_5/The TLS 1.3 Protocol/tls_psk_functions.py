@@ -66,12 +66,16 @@ class PSKFunctions:
         ticket_nonce = get_random_bytes(8)
         HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
-        label = tls_hkdf_label('resumption', ticket_nonce, length)
+
+        context = 'resumption'.encode()
+
+        label = tls_crypto.tls_hkdf_label(context, ticket_nonce, length)
+
         PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
-        ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite
+        ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite.to_bytes(2,'big')
 
         # What is ad??
-        chacha = ChaCha20_Poly1305.new(server_static_enc_key, ticket_nonce)
+        chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
         ctxt,tag = chacha.encrypt_and_digest(ptxt)
 
         ticket = ticket_nonce + ctxt + tag
@@ -103,7 +107,7 @@ class PSKFunctions:
         # ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
         # curr_pos += 8
 
-        ticket_length = message_length - 20
+        ticket_length = message_length - 12
 
         HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
