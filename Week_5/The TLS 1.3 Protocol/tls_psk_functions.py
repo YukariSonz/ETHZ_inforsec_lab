@@ -60,14 +60,76 @@ class PSKFunctions:
 
 
     def tls_13_server_new_session_ticket(self, server_static_enc_key, resumption_secret):
-        raise NotImplementedError()
+        ticket_lifetime = 604800
+        ticket_lifetime = ticket_lifetime.to_bytes(4, 'big')
+        ticket_age_add = int.from_bytes(get_random_bytes(4),'big')
+        ticket_nonce = get_random_bytes(8)
+        HKDF = tls_crypto.HKDF(self.csuite)
+        length = HKDF.hash_length
+        label = tls_hkdf_label('resumption', ticket_nonce, length)
+        PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
+        ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite
+
+        # What is ad??
+        ticket = ChaCha20_Poly1305(server_static_enc_key, ticket_nonce, None, ptxt)
+        
+
+        max_early_data_size = 2**12
+        extension = max_early_data_size.to_bytes(4, 'big')
+
+        new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension
+        return new_session_ticket
+        #raise NotImplementedError()
 
 
     def tls_13_client_parse_new_session_ticket(self, resumption_secret, nst_msg):
-        raise NotImplementedError()
+        PSK_dict = {}
+        curr_pos = 0
+
+        
+
+        message_length = len(nst_msg)
+
+        ticket_lifetime = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
+        curr_pos += 4
+
+        ticket_add = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
+        curr_pos += 4
+
+        ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
+        curr_pos += 8
+
+        ticket_length = message_length - 20
+
+        HKDF = tls_crypto.HKDF(self.csuite)
+        length = HKDF.hash_length
+        ticket = nst_msg[curr_pos : curr_pos + ticket_length]
+        PSK = ticket[:length]
+
+        curr_pos += ticket_length
+        max_data = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
+
+        binder_key = "res binder"
+
+        PSK_dict["PSK"] = PSK
+        PSK_dict['lifetime'] = ticket_lifetime
+        PSK_dict['lifetime_add'] = ticket_lifetime
+        PSK_dict['ticket'] = ticket
+        PSK_dict['max_data'] = max_data
+        PSK_dict['binder key'] = binder_key
+        PSK_dict['csuite'] = self.csuite
+
+        return PSK_dict
 
     def tls_13_client_prep_psk_mode_extension(self, modes):
-        raise NotImplementedError()
+        
+        PsyKeyExchangeModes = bytes()
+        for mode in modes:
+            PsyKeyExchangeModes += mode.to_bytes(2, 'big')
+        length = len(PsyKeyExchangeModes).to_bytes(2, 'big')
+        PsyKeyExchangeModes += length
+        return PsyKeyExchangeModes
+        # raise NotImplementedError()
 
     def tls_13_client_prep_psk_extension(self, PSKS, ticket_age, transcript):
         raise NotImplementedError()
