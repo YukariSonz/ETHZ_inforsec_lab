@@ -104,6 +104,7 @@ class Handshake:
 
 		msg = version + random_number + legacy_sess_id_len + legacy_sess_id + csuites_len + cipher_suite + legacy_compression_len + legacy_compression + exten_len + extension_set
 		chelo_msg = self.attach_handshake_header(tls_constants.CHELO_TYPE, msg)
+		self.transcript =  self.transcript + chelo_msg
 
 		return chelo_msg
 		#raise NotImplementedError()
@@ -271,7 +272,7 @@ class Handshake:
 		self.remote_hs_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "c hs traffic".encode(), self.transcript)
 		derived_hs_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "derived".encode(), "".encode())
 		self.master_secret = tls_crypto.tls_extract_secret(self.csuite, None, derived_hs_secret)
-		
+
 		return 0
 		# raise NotImplementedError
 
@@ -334,7 +335,33 @@ class Handshake:
 		return cert_verify_msg
 
 	def tls_13_process_server_cert_verify(self, verify_msg):
-		raise NotImplementedError()
+		verify_message = self.process_handshake_header(tls_constants.CVFY_TYPE, verify_msg)
+		msg_len = len(cert)
+		curr_pos = 0
+		signature_scheme = int.from_bytes(verify_message[curr_pos: curr_pos + 2], 'big')
+		curr_pos += 2
+		len_sig_bytes= int.from_bytes(verify_message[curr_pos: curr_pos + 2], 'big')
+		curr_pos += 2
+		signature = [curr_pos:]
+		RSA = [0x0401, 0x0501, 0x0601]
+		ECDSA = [0x0403, 0x0503, 0x0603]
+		pk = None
+		if signature_scheme in RSA:
+			pk = tls_crypto.get_rsa_pk_from_cert(self.cert_string)
+		elif signature_scheme in ECDSA:
+			pk = tls_crypto.get_ecdsa_pk_from_cert(self.cert_string)
+			
+		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
+		tls_crypto.tls_verify_signature(signature_scheme, verify_message, tls_constants.SERVER_FLAG, pk)
+
+
+		
+
+
+		self.transcript = self.transcript + verify_msg
+
+		return 0
+		# raise NotImplementedError()
 
 	def tls_13_finished(self):
 		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
@@ -349,7 +376,19 @@ class Handshake:
 		return fin_msg
 
 	def tls_13_process_finished(self, fin_msg):
-		raise NotImplementedError()
+		tag= self.process_handshake_header(tls_constants.FINI_TYPE, fin_msg)
+		finished_key = tls_crypto.tls_finished_key_derive(self.csuite, self.remote_hs_traffic_secret)
+		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
+		tls_finished_mac_verify(self.csuite, finished_key, transcript_hash, tag)
+
+		self.transcript = self.transcript + fin_msg
+
+		if (self.role == tls_constants.CLIENT_FLAG):
+			transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
+			self.local_ap_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, self.master_secret, "s ap traffic".encode(), transcript_hash)
+			self.remote_ap_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, self.master_secret, "c ap traffic".encode(), transcript_hash)
+		return 0
+		# raise NotImplementedError()
 
 	def tls_hs_ms_process(self, msg):
 		msg_type = msg[0]
