@@ -74,10 +74,8 @@ class PSKFunctions:
         PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
         ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite.to_bytes(2,'big')
 
-        # What is ad??
         chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
         ctxt,tag = chacha.encrypt_and_digest(ptxt)
-
         ticket = ticket_nonce + ctxt + tag
 
         
@@ -85,15 +83,16 @@ class PSKFunctions:
         max_early_data_size = 2**12
         extension = max_early_data_size.to_bytes(4, 'big')
 
-        new_session_ticket = ticket_lifetime + ticket_age_add +  ticket + extension
+        new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension
+
+        new_session_ticket = self.attach_handshake_header(tls_constants.NEWST_TYPE, new_session_ticket)
         return new_session_ticket
-        #raise NotImplementedError()
 
 
     def tls_13_client_parse_new_session_ticket(self, resumption_secret, nst_msg):
         PSK_dict = {}
         curr_pos = 0
-
+        nst_msg = self.process_handshake_header(tls_constants.NEWST_TYPE,nst_msg)
         
 
         message_length = len(nst_msg)
@@ -104,27 +103,33 @@ class PSKFunctions:
         ticket_add = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         curr_pos += 4
 
-        # ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
-        # curr_pos += 8
+        ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
+        curr_pos += 8
 
-        ticket_length = message_length - 12
+        
+        
 
-        HKDF = tls_crypto.HKDF(self.csuite)
-        length = HKDF.hash_length
+        ticket_length = message_length - 20
+
         ticket = nst_msg[curr_pos : curr_pos + ticket_length]
-        PSK = ticket[:length]
 
+        nonce = ticket[:8]
+        length = HKDF.hash_length
+        context = 'resumption'.encode()
+        label = tls_crypto.tls_hkdf_label(context, nonce, length)
+        PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
         curr_pos += ticket_length
-        max_data = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
 
-        binder_key = "res binder"
+        max_data = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
+        
+        binder_key = "resbinder"
 
         PSK_dict["PSK"] = PSK
         PSK_dict['lifetime'] = ticket_lifetime
-        PSK_dict['lifetime_add'] = ticket_lifetime
+        PSK_dict['lifetime_add'] = ticket_add
         PSK_dict['ticket'] = ticket
         PSK_dict['max_data'] = max_data
-        PSK_dict['binder key'] = binder_key
+        PSK_dict['binder key'] = binder_key.encode()
         PSK_dict['csuite'] = self.csuite
 
         return PSK_dict
