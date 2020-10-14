@@ -62,7 +62,7 @@ class PSKFunctions:
     def tls_13_server_new_session_ticket(self, server_static_enc_key, resumption_secret):
         ticket_lifetime = 604800
         ticket_lifetime = ticket_lifetime.to_bytes(4, 'big')
-        ticket_age_add = int.from_bytes(get_random_bytes(4),'big')
+        ticket_age_add = get_random_bytes(4)
         ticket_nonce = get_random_bytes(8)
         HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
@@ -71,13 +71,17 @@ class PSKFunctions:
         ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite
 
         # What is ad??
-        ticket = ChaCha20_Poly1305(server_static_enc_key, ticket_nonce, None, ptxt)
+        chacha = ChaCha20_Poly1305.new(server_static_enc_key, ticket_nonce)
+        ctxt,tag = chacha.encrypt_and_digest(ptxt)
+
+        ticket = ticket_nonce + ctxt + tag
+
         
 
         max_early_data_size = 2**12
         extension = max_early_data_size.to_bytes(4, 'big')
 
-        new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension
+        new_session_ticket = ticket_lifetime + ticket_age_add +  ticket + extension
         return new_session_ticket
         #raise NotImplementedError()
 
@@ -96,8 +100,8 @@ class PSKFunctions:
         ticket_add = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         curr_pos += 4
 
-        ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
-        curr_pos += 8
+        # ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
+        # curr_pos += 8
 
         ticket_length = message_length - 20
 
