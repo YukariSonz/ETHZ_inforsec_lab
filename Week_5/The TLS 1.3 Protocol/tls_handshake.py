@@ -248,10 +248,10 @@ class Handshake:
 				group_name = int.from_bytes(self.remote_extensions[extension_position:extension_position+2], 'big')
 				extension_position = extension_position + 2
 
-				len_public_key = self.remote_extension[extension_position:extension_positions+2]
+				len_public_key = self.remote_extensions[extension_position:extension_position+2]
 				extension_position = extension_position + 2
 
-				legacy_form = int.from_bytes(self.remote_extensions[extension_position:extension_position+1])
+				legacy_form = int.from_bytes(self.remote_extensions[extension_position:extension_position+1], 'big')
 				extension_position = extension_position + 1
 
 				key_change = self.remote_extensions[extension_position:]
@@ -344,13 +344,13 @@ class Handshake:
 
 	def tls_13_process_server_cert_verify(self, verify_msg):
 		verify_message = self.process_handshake_header(tls_constants.CVFY_TYPE, verify_msg)
-		msg_len = len(verify_msg)
+		msg_len = len(verify_message)
 		curr_pos = 0
 		signature_scheme = int.from_bytes(verify_message[curr_pos: curr_pos + 2], 'big')
 		curr_pos += 2
 		len_sig_bytes= int.from_bytes(verify_message[curr_pos: curr_pos + 2], 'big')
 		curr_pos += 2
-		signature = verify_msg[curr_pos:]
+		signature = verify_message[curr_pos:]
 		RSA = [0x0401, 0x0501, 0x0601]
 		ECDSA = [0x0403, 0x0503, 0x0603]
 		pk = None
@@ -359,7 +359,7 @@ class Handshake:
 		elif signature_scheme in ECDSA:
 			pk = tls_crypto.get_ecdsa_pk_from_cert(self.server_cert_string)
 		transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, self.transcript)
-		tls_crypto.tls_verify_signature(signature_scheme, transcript_hash, tls_constants.SERVER_FLAG, singature, pk)
+		tls_crypto.tls_verify_signature(signature_scheme, transcript_hash, tls_constants.SERVER_FLAG, signature, pk)
 		self.transcript = self.transcript + verify_msg
 
 		return 0
