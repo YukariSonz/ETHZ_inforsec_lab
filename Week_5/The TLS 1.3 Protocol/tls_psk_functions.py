@@ -83,8 +83,9 @@ class PSKFunctions:
 
         max_early_data_size = 2**12
         extension = max_early_data_size.to_bytes(4, 'big')
+        extension_length = len(extension).to_bytes(1,'big')
 
-        new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension
+        new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension_length + extension
         new_session_ticket = self.attach_handshake_header(tls_constants.NEWST_TYPE, new_session_ticket)
         return new_session_ticket
 
@@ -109,7 +110,7 @@ class PSKFunctions:
         
         
 
-        ticket_length = message_length - 20
+        ticket_length = message_length - 21
 
         ticket = nst_msg[curr_pos : curr_pos + ticket_length]
 
@@ -119,12 +120,20 @@ class PSKFunctions:
         context = 'resumption'.encode()
         label = tls_crypto.tls_hkdf_label(context, ticket_nonce, length)
         PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
+
+
+
+
+
+
         curr_pos += ticket_length
+        extension_length = int.from_bytes(nst_msg[curr_pos : curr_pos + 1], 'big')
+        curr_pos += 1
         max_data = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         
-        binder_key_script = "res binder"
-        early_secret = hkdf.tls_hkdf_extract(PSK, None)
-        binder_key = tls_derive_secret(self.csuite, early_secret, binder_key_script, "".encode())
+        binder_key_script = "res binder".encode()
+        early_secret = HKDF.tls_hkdf_extract(PSK, None)
+        binder_key = tls_crypto.tls_derive_secret(self.csuite, early_secret, binder_key_script, "".encode())
 
         PSK_dict["PSK"] = PSK
         PSK_dict['lifetime'] = ticket_lifetime
