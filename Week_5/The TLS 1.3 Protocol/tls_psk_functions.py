@@ -64,12 +64,14 @@ class PSKFunctions:
         ticket_lifetime = ticket_lifetime.to_bytes(4, 'big')
 
         ticket_age_add = get_random_bytes(4)
+
         ticket_nonce = get_random_bytes(8)
+        nonce_length = len(ticket_nonce)
+        nonce_length = nonce_length.to_bytes(2,'big')
+
         HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
-
         context = 'resumption'.encode()
-
         label = tls_crypto.tls_hkdf_label(context, ticket_nonce, length)
         PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
 
@@ -78,6 +80,8 @@ class PSKFunctions:
         chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
         ctxt,tag = chacha.encrypt_and_digest(ptxt)
         ticket = ticket_nonce + ctxt + tag
+        ticket_length = len(ticket)
+        ticket_length = ticket_length.to_bytes(2,'big')
 
         
 
@@ -104,16 +108,18 @@ class PSKFunctions:
         ticket_add = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         curr_pos += 4
 
+        nonce_length = nst_msg[curr_pos : curr_pos + 2]
+        curr_pos += 2
         ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
         curr_pos += 8
 
         
         
 
-        ticket_length = message_length - 21
+        ticket_length = nst_msg[curr_pos : curr_pos + 2]
+        curr_pos += 2
 
         ticket = nst_msg[curr_pos : curr_pos + ticket_length]
-
         nonce = ticket[:8]
         HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
