@@ -89,7 +89,7 @@ class PSKFunctions:
         extension = max_early_data_size.to_bytes(4, 'big')
         extension_length = len(extension).to_bytes(4,'big')
 
-        new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension_length + extension
+        new_session_ticket = ticket_lifetime + ticket_age_add + nonce_length + ticket_nonce + ticket_length + ticket + extension_length + extension
         new_session_ticket = self.attach_handshake_header(tls_constants.NEWST_TYPE, new_session_ticket)
         return new_session_ticket
 
