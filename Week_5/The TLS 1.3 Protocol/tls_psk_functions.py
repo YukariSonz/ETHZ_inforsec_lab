@@ -67,7 +67,7 @@ class PSKFunctions:
 
         ticket_nonce = get_random_bytes(8)
         nonce_length = len(ticket_nonce)
-        nonce_length = nonce_length.to_bytes(2,'big')
+        nonce_length = nonce_length.to_bytes(1,'big')
 
         HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
@@ -87,7 +87,7 @@ class PSKFunctions:
 
         max_early_data_size = 2**12
         extension = max_early_data_size.to_bytes(4, 'big')
-        extension_length = len(extension).to_bytes(1,'big')
+        extension_length = len(extension).to_bytes(4,'big')
 
         new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension_length + extension
         new_session_ticket = self.attach_handshake_header(tls_constants.NEWST_TYPE, new_session_ticket)
@@ -108,15 +108,15 @@ class PSKFunctions:
         ticket_add = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         curr_pos += 4
 
-        nonce_length = nst_msg[curr_pos : curr_pos + 2]
-        curr_pos += 2
+        nonce_length = nst_msg[curr_pos : curr_pos + 1]
+        curr_pos += 1
         ticket_nonce = nst_msg[curr_pos : curr_pos + 8]
         curr_pos += 8
 
         
         
 
-        ticket_length = nst_msg[curr_pos : curr_pos + 2]
+        ticket_length = int.from_bytes(nst_msg[curr_pos : curr_pos + 2], 'big')
         curr_pos += 2
 
         ticket = nst_msg[curr_pos : curr_pos + ticket_length]
@@ -133,8 +133,8 @@ class PSKFunctions:
 
 
         curr_pos += ticket_length
-        extension_length = int.from_bytes(nst_msg[curr_pos : curr_pos + 1], 'big')
-        curr_pos += 1
+        extension_length = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
+        curr_pos += 4
         max_data = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         
         binder_key_script = "res binder".encode()
