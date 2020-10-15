@@ -157,7 +157,7 @@ class PSKFunctions:
         for mode in modes:
             PsyKeyExchangeModes += mode.to_bytes(2, 'big')
         length = len(PsyKeyExchangeModes).to_bytes(2, 'big')
-        PsyKeyExchangeModes += length
+        PsyKeyExchangeModes = tls_constants.PSK_KEX_MODE_TYPE.to_bytes(2, 'big') + length + PsyKeyExchangeModes
         return PsyKeyExchangeModes
         # raise NotImplementedError()
 
