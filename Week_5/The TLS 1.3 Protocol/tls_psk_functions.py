@@ -62,6 +62,7 @@ class PSKFunctions:
     def tls_13_server_new_session_ticket(self, server_static_enc_key, resumption_secret):
         ticket_lifetime = 604800
         ticket_lifetime = ticket_lifetime.to_bytes(4, 'big')
+
         ticket_age_add = get_random_bytes(4)
         ticket_nonce = get_random_bytes(8)
         HKDF = tls_crypto.HKDF(self.csuite)
@@ -70,8 +71,8 @@ class PSKFunctions:
         context = 'resumption'.encode()
 
         label = tls_crypto.tls_hkdf_label(context, ticket_nonce, length)
-
         PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
+
         ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite.to_bytes(2,'big')
 
         chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
@@ -84,7 +85,6 @@ class PSKFunctions:
         extension = max_early_data_size.to_bytes(4, 'big')
 
         new_session_ticket = ticket_lifetime + ticket_age_add + ticket_nonce + ticket + extension
-
         new_session_ticket = self.attach_handshake_header(tls_constants.NEWST_TYPE, new_session_ticket)
         return new_session_ticket
 
@@ -114,22 +114,24 @@ class PSKFunctions:
         ticket = nst_msg[curr_pos : curr_pos + ticket_length]
 
         nonce = ticket[:8]
+        HKDF = tls_crypto.HKDF(self.csuite)
         length = HKDF.hash_length
         context = 'resumption'.encode()
-        label = tls_crypto.tls_hkdf_label(context, nonce, length)
+        label = tls_crypto.tls_hkdf_label(context, ticket_nonce, length)
         PSK = HKDF.tls_hkdf_expand(resumption_secret, label, length)
         curr_pos += ticket_length
-
         max_data = int.from_bytes(nst_msg[curr_pos : curr_pos + 4], 'big')
         
-        binder_key = "resbinder"
+        binder_key_script = "res binder"
+        early_secret = hkdf.tls_hkdf_extract(PSK, None)
+        binder_key = tls_derive_secret(self.csuite, early_secret, binder_key_script, "".encode())
 
         PSK_dict["PSK"] = PSK
         PSK_dict['lifetime'] = ticket_lifetime
         PSK_dict['lifetime_add'] = ticket_add
         PSK_dict['ticket'] = ticket
         PSK_dict['max_data'] = max_data
-        PSK_dict['binder key'] = binder_key.encode()
+        PSK_dict['binder key'] = binder_key
         PSK_dict['csuite'] = self.csuite
 
         return PSK_dict
