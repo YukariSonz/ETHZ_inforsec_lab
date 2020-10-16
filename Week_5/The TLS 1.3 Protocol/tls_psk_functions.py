@@ -162,7 +162,36 @@ class PSKFunctions:
         # raise NotImplementedError()
 
     def tls_13_client_prep_psk_extension(self, PSKS, ticket_age, transcript):
-        raise NotImplementedError()
+        identities = bytes()
+        binder_keys = bytes()
+        binders_length = 0
+
+        for PSK in PSKS:
+            identity = PSK['ticket']
+            lifetime = PSK['lifetime']
+            lifetime_add = PSK['lifetime_add']
+            obfuscated_ticket_age = (ticket_age + lifetime_add) % (2**32)
+            # If this is grater than lifetime, then ignore this PSK
+            if obfuscated_ticket_age > lifetime:
+                continue
+            binder_key = PSK['binder key']
+            csuite = PSK['csuite']
+            identities += identity
+
+            #transcript_hash = tls_crypto.tls_transcript_hash(csuite, .transcript)
+            binder_values = tls_crypto.tls_finished_mac(csuite, binder_key, transcript)
+            binder_keys += binder_values
+
+        offered_psks = identities + binder_keys
+        extension_length = len(offered_psks).to_bytes(2, 'big')
+        extension = extension_length + offered_psks
+        return extension
+        
+
+
+
+
+        #raise NotImplementedError()
 
     def tls_13_server_parse_psk_extension(self, server_static_enc_key, psk_extension, transcript):
         raise NotImplementedError()
