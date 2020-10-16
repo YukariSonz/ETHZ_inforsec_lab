@@ -168,46 +168,45 @@ class PSKFunctions:
 
         for index in range(len(PSKS)):
             PSK = PSKS[index]
-            current_ticket_age = ticket_age[index]
+            current_ticket_age = int(ticket_age[index] / 1000)
             identity = PSK['ticket']
             lifetime = PSK['lifetime']
             lifetime_add = PSK['lifetime_add']
-            lifetime = lifetime * 1000 # Convert it to miliseconds
-            lifetime_add = lifetime_add * 1000
             obfuscated_ticket_age = (current_ticket_age + lifetime_add) % (2**32)
             # If this is grater than lifetime, then ignore this PSK
-            if obfuscated_ticket_age > lifetime:
+            if current_ticket_age > lifetime:
                 continue
             binder_key = PSK['binder key']
             csuite = PSK['csuite']
 
-            identity += obfuscated_ticket_age.to_bytes(4, 'big')
+            
 
-            #id_length = len(identity).to_bytes(2,'big')
+            id_length = len(identity).to_bytes(2,'big')
+            identities += id_length
             identities += identity
+            identity += obfuscated_ticket_age.to_bytes(4, 'big')
+            
             if (csuite == tls_constants.TLS_AES_128_GCM_SHA256) or (csuite == tls_constants.TLS_CHACHA20_POLY1305_SHA256):
-		        hash=SHA256.new()
-	        if (csuite == tls_constants.TLS_AES_256_GCM_SHA384):
-		        hash=SHA384.new()
+                hash=SHA256.new()
+            if (csuite == tls_constants.TLS_AES_256_GCM_SHA384):
+                hash=SHA384.new()
             
             binders_length += hash.digest_size + 1
   
         identities_length = len(identities)
         identities_length = identities_length.to_bytes(2,'big')
-        transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript)
+        
 
         for index in range(len(PSKS)):
             PSK = PSKS[index]
-            current_ticket_age = ticket_age[index]
+            current_ticket_age = int(ticket_age[index] / 1000)
             lifetime = PSK['lifetime']
             lifetime_add = PSK['lifetime_add']
-            lifetime = lifetime * 1000 # Convert it to miliseconds
-            lifetime_add = lifetime_add * 1000
             obfuscated_ticket_age = (current_ticket_age + lifetime_add) % (2**32)
             # If this is grater than lifetime, then ignore this PSK
-            if obfuscated_ticket_age > lifetime:
+            if current_ticket_age > lifetime:
                 continue
-            
+            transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript)
             extension_type = tls_constants.PSK_TYPE
             
             binder_key = PSK['binder key']
@@ -218,7 +217,7 @@ class PSKFunctions:
             bin_len = len(binder_values).to_bytes(1,'big')
             binder_keys += (bin_len + binder_values)
 
-        offered_psks = identities + binder_values
+        offered_psks = identities + binder_keys
         extension_length = len(offered_psks).to_bytes(2, 'big')
         extension = extension_length + offered_psks
         return extension
