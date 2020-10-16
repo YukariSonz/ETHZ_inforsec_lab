@@ -166,21 +166,26 @@ class PSKFunctions:
         binder_keys = bytes()
         binders_length = 0
 
-        for PSK in PSKS:
+        for index in range(len(PSKS)):
+            PSK = PSKS[index]
+            current_ticket_age = ticket_age[index]
             identity = PSK['ticket']
             lifetime = PSK['lifetime']
             lifetime_add = PSK['lifetime_add']
-            obfuscated_ticket_age = (ticket_age + lifetime_add) % (2**32)
+            obfuscated_ticket_age = (current_ticket_age + lifetime_add) % (2**32)
             # If this is grater than lifetime, then ignore this PSK
-            if obfuscated_ticket_age > lifetime:
-                continue
+            # Buggy
+            # if obfuscated_ticket_age > lifetime:
+            #     continue
             binder_key = PSK['binder key']
             csuite = PSK['csuite']
-            identities += identity
 
-            #transcript_hash = tls_crypto.tls_transcript_hash(csuite, .transcript)
+            id_length = len(identity).to_bytes(2,'big')
+            identities += (id_length + identity)
+
             binder_values = tls_crypto.tls_finished_mac(csuite, binder_key, transcript)
-            binder_keys += binder_values
+            bin_len = len(binder_values).to_bytes(2,'big')
+            binder_keys += (bin_len + binder_values)
 
         offered_psks = identities + binder_keys
         extension_length = len(offered_psks).to_bytes(2, 'big')
