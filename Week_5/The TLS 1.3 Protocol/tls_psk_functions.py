@@ -300,6 +300,11 @@ class PSKFunctions:
             ticket_position += 4
             ticket_lifetime = int.from_bytes(ticket_lifetime_byte, 'big')
 
+
+            binder_key_script = "res binder".encode()
+            early_secret = HKDF.tls_hkdf_extract(PSK, None)
+            binder_key = tls_crypto.tls_derive_secret(self.csuite, early_secret, binder_key_script, "".encode())
+
             expired = False
 
             if obfuscated_ticket_age > ticket_lifetime:
@@ -310,7 +315,7 @@ class PSKFunctions:
             csuite = int.from_bytes(csuite_byte, 'big')
             ticket_position += 2
 
-            results = (csuite,expired)
+            results = (csuite, expired, binder_key)
             ticket_info_list.append(results)
 
         
@@ -344,11 +349,12 @@ class PSKFunctions:
             ticket_info_tuple = ticket_info_list[index]
             csuite = ticket_info_tuple[0]
             is_expired = ticket_info_tuple[1]
+            binder_key = ticket_info_tuple[2]
 
             if is_expired:
                 continue
 
-            self_binder_value = tls_crypto.tls_finished_mac(csuite, server_static_enc_key, transcript_hash)
+            self_binder_value = tls_crypto.tls_finished_mac(csuite, binder_key, transcript_hash)
             current_identity = identities_list[index]
             result_tuples = (current_identity,result)
 
