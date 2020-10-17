@@ -230,7 +230,94 @@ class PSKFunctions:
         #raise NotImplementedError()
 
     def tls_13_server_parse_psk_extension(self, server_static_enc_key, psk_extension, transcript):
-        raise NotImplementedError()
+        curr_pos = 0
+
+        extension_type = psk_extension[curr_pos : curr_pos + 2]
+        curr_pos += 2
+
+        extension_length = psk_extension[curr_pos : curr_pos + 2]
+        curr_pos += 2
+
+        offered_psks = psk_extension[curr_pos:]
+
+        curr_pos_in = 0
+        identities_length = int.from_bytes(offered_psks[curr_pos_in : curr_pos_in + 2], 'big')
+        curr_pos_in += 2
+
+
+        #Parse Identities
+        identities_list = []
+        identities = offered_psks[curr_pos_in : curr_pos_in + identities_length]
+        curr_pos_in += identities_length
+
+        identity_index = 0
+        while (identity_index < len(identities)):
+            #something
+            identity_length_byte = identities[identity_index : identity_index + 2]
+            identity_length = int.from_bytes(identity_length_byte, 'big')
+            identity_index += 2
+
+            identity = identities[identity_index : identity_index + identity_length]
+            identity_index += identity_length
+
+            obfuscated_ticket_age_byte = identities[identity_index : identity_index + 4]
+            obfuscated_ticket_age = int.from_bytes(obfuscated_ticket_age_byte, 'big')
+            identity_index += 4
+
+            #id_triples = (identity_length, identity, obfuscated_ticket_age)
+            identities_list.append(identity_length_byte+identity+obfuscated_ticket_age_byte)
+
+
+
+        
+        #Parse binder_keys
+
+        binders_length = int.from_bytes(offered_psks[curr_pos_in : curr_pos_in + 2], 'big')
+        curr_pos_in += 2
+        binder_values = offered_psks[curr_pos_in:]
+
+        binder_index = 0
+        binders_list = []
+        while (binder_index < binders_length):
+            binder_length = int.from_bytes(binder_values[binder_index : binder_index + 1], 'big')
+            binder_index += 1
+
+            binder_value = binder_values[binder_index : binder_index + binder_length]
+            binder_index += binder_length
+
+            binder_tuple = (binder_length, binder_value)
+            binders_list.append(binder_tuple)
+        
+        #Decrypt & verify
+        partial_transcript = transcript + extension_type + extension_length + identities_length + identities 
+        transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, partial_transcript)
+
+        result_list = []
+        for index in range(len(binders_list)):
+            binder_tuple = binders_list[index]
+
+            binder_value = binder_tuple[1]
+
+            self_binder_value = tls_crypto.tls_finished_mac(csuite, server_static_enc_key, transcript_hash)
+            current_identity = identities_list[index]
+            result_tuples = (current_identity,result)
+
+            if self_binder_value == binder_value:
+                return result_tuples
+        
+
+        raise DecryptError()
+
+
+            
+        
+
+
+        
+
+
+
+        #raise NotImplementedError()
 
     def tls_13_psk_key_schedule(self, psk_secret, dhe_secret, transcript_one, transcript_two, transcript_three, transcript_four):
         raise NotImplementedError()
