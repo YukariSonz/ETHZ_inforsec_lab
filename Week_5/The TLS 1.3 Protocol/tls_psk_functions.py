@@ -241,14 +241,17 @@ class PSKFunctions:
         offered_psks = psk_extension[curr_pos:]
 
         curr_pos_in = 0
-        identities_length = int.from_bytes(offered_psks[curr_pos_in : curr_pos_in + 2], 'big')
+        identities_length_byte = offered_psks[curr_pos_in : curr_pos_in + 2]
+        identities_length = int.from_bytes(identities_length_byte, 'big')
         curr_pos_in += 2
 
 
-        #Parse Identities
+        #Parse Identities = ticket
         identities_list = []
+        id_triples_list = []
         identities = offered_psks[curr_pos_in : curr_pos_in + identities_length]
         curr_pos_in += identities_length
+
 
         identity_index = 0
         while (identity_index < len(identities)):
@@ -264,10 +267,51 @@ class PSKFunctions:
             obfuscated_ticket_age = int.from_bytes(obfuscated_ticket_age_byte, 'big')
             identity_index += 4
 
-            #id_triples = (identity_length, identity, obfuscated_ticket_age)
-            identities_list.append(identity_length_byte+identity+obfuscated_ticket_age_byte)
+            id_triples = (identity_length, identity, obfuscated_ticket_age)
+
+            identities_list.append(identity_length_byte + identity + obfuscated_ticket_age_byte)
+
+            id_triples_list.append(id_triples)
 
 
+        ticket_info_list = []
+        for index in range(len(id_triples_list)):
+            ticket_position = 0
+            id_triples = id_triples_list[index]
+            ticket = id_triples[1]
+            obfuscated_ticket_age = int(id_triples[2] / 1000)
+
+            nonce = ticket[:8]
+            chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
+            # ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite.to_bytes(2,'big')
+            ptxt = chacha.encrypt_and_digest(ticket)
+
+            HKDF = tls_crypto.HKDF(self.csuite)
+            length = HKDF.hash_length
+
+            PSK = ptxt[ticket_position : ticket_position + length]
+            ticket_position += length
+
+            ticket_age_add_byte = ptxt[ticket_position : ticket_position + 4]
+            ticket_position += 4
+            ticket_age_add = int.from_bytes(ticket_age_add_byte, 'big')
+
+            ticket_lifetime_byte = ptxt[ticket_position : ticket_position + 4]
+            ticket_position += 4
+            ticket_lifetime = int.from_bytes(ticket_lifetime_byte, 'big')
+
+            expired = False
+
+            if obfuscated_ticket_age > ticket_lifetime:
+                expired = True
+            
+
+            csuite_byte = ptxt[ticket_position : ticket_position + 2]
+            csuite = int.from_bytes(csuite_byte, 'big')
+            ticket_position += 2
+
+            results = (csuite,expired)
+            ticket_info_list.append(results)
 
         
         #Parse binder_keys
@@ -289,14 +333,20 @@ class PSKFunctions:
             binders_list.append(binder_tuple)
         
         #Decrypt & verify
-        partial_transcript = transcript + extension_type + extension_length + identities_length + identities 
+        partial_transcript = transcript + extension_type + extension_length + identities_length_byte + identities
         transcript_hash = tls_crypto.tls_transcript_hash(self.csuite, partial_transcript)
 
         result_list = []
         for index in range(len(binders_list)):
             binder_tuple = binders_list[index]
-
             binder_value = binder_tuple[1]
+
+            ticket_info_tuple = ticket_info_list[index]
+            csuite = ticket_info_tuple[0]
+            is_expired = ticket_info_tuple[1]
+
+            if is_expired:
+                continue
 
             self_binder_value = tls_crypto.tls_finished_mac(csuite, server_static_enc_key, transcript_hash)
             current_identity = identities_list[index]
