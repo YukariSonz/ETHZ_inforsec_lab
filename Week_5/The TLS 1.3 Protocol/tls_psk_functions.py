@@ -281,7 +281,7 @@ class PSKFunctions:
             ticket = id_triples[1]
             obfuscated_ticket_age = int(id_triples[2] / 1000)
 
-            nonce = ticket[:8]
+            ticket_nonce = ticket[:8]
             chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
             # ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite.to_bytes(2,'big')
             ptxt = chacha.encrypt_and_digest(ticket)
