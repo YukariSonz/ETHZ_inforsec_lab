@@ -373,15 +373,46 @@ class PSKFunctions:
         raise DecryptError()
 
 
-            
-        
-
-
-        
-
-
-
-        #raise NotImplementedError()
 
     def tls_13_psk_key_schedule(self, psk_secret, dhe_secret, transcript_one, transcript_two, transcript_three, transcript_four):
-        raise NotImplementedError()
+        # transcript_one = ClientHello
+        # transcript_two = ClientHello..ServerHello
+        # transcript_three = ClientHello..ServerFinished
+        # transcript_four = ClientHello..ClientFinished
+
+
+        early_secret = tls_crypto.tls_extract_secret(self.csuite, None, None)
+        binder_key = tls_crypto.tls_derive_secret(self.csuite, early_secret, binder_key_script, "".encode())
+
+        client_early_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, binder_key, "c e traffic".encode(), transcript_one)
+        client_early_key, client_early_iv = tls_crypto.tls_derive_key_iv(self.csuite, client_early_traffic_secret)
+
+        early_exported_master_secret = tls_crypto.tls_derive_secret(self.csuite, early_secret, "e exp master".encode(), transcript_one)
+        
+        derived_early_secret = tls_crypto.tls_derive_secret(self.csuite, early_exported_master_secret, "derived".encode(), "".encode())
+
+        handshake_secret = tls_crypto.tls_extract_secret(self.csuite, dhe_secret, derived_early_secret)
+
+        client_handshake_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "c hs traffic".encode(), transcript_two)
+        client_handshake_key, client_handshake_iv = tls_crypto.tls_derive_key_iv(self.csuite, client_handshake_traffic_secret)
+
+        server_handshake_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "s hs traffic".encode(), transcript_two)
+        server_handshake_key, server_handshake_key_iv = tls_crypto.tls_derive_key_iv(self.csuite, server_handshake_traffic_secret)
+
+        derived_handshake_secret = tls_crypto.tls_derive_secret(self.csuite, handshake_secret, "derived".encode(), "".encode())
+
+        master_secret = tls_crypto.tls_extract_secret(self.csuite, None, derived_handshake_secret)
+
+        client_application_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, master_secret, "c ap traffic".encode(), transcript_three)
+        client_application_key, client_application_iv = tls_crypto.tls_derive_key_iv(self.csuite, client_application_traffic_secret)
+        
+        server_application_traffic_secret = tls_crypto.tls_derive_secret(self.csuite, master_secret, "s ap traffic".encode(), transcript_three)
+        server_application_key, server_application_iv = tls_crypto.tls_derive_key_iv(self.csuite, server_application_traffic_secret)
+
+        exporter_master_secret = tls_crypto.tls_derive_secret(self.csuite, master_secret, "exp master".encode(), transcript_three)
+        resumption_master_secret = tls_crypto.tls_derive_secret(self.csuite, master_secret, "res master".encode(), transcript_four)
+
+        return (early_secret, binder_key, client_early_traffic_secret, client_early_key, client_early_iv, early_exported_master_secret, derived_early_secret, handshake_secret, client_handshake_traffic_secret, client_handshake_key, client_application_iv,
+        server_handshake_traffic_secret, server_handshake_key, server_handshake_key_iv, derived_handshake_secret, master_secret, client_application_traffic_secret, client_application_key, client_application_iv, 
+        server_application_traffic_secret, server_application_key, server_application_iv, exporter_master_secret, resumption_master_secret)
+        # raise NotImplementedError()
