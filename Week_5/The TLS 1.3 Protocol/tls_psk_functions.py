@@ -322,7 +322,7 @@ class PSKFunctions:
             csuite = int.from_bytes(csuite_byte, 'big')
             ticket_position += 2
 
-            results = (csuite, expired, binder_key)
+            results = (csuite, expired, binder_key, PSK)
             ticket_info_list.append(results)
 
         
@@ -357,13 +357,14 @@ class PSKFunctions:
             csuite = ticket_info_tuple[0]
             is_expired = ticket_info_tuple[1]
             binder_key = ticket_info_tuple[2]
+            PSK = ticket_info_tuple[3]
 
-            if is_expired:
-                continue
+            #if is_expired:
+            #    continue
 
             self_binder_value = tls_crypto.tls_finished_mac(csuite, binder_key, transcript_hash)
             current_identity = identities_list[index]
-            result_tuples = (current_identity,result)
+            result_tuples = (PSK, index)
 
             if self_binder_value == binder_value:
                 return result_tuples
