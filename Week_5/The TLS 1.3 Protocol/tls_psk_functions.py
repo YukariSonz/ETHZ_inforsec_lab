@@ -195,8 +195,9 @@ class PSKFunctions:
   
         identities_length = len(identities)
         identities_length = identities_length.to_bytes(2,'big')
-        
+        binders_length = binders_length.to_bytes(2,'big')
 
+        extension_type = tls_constants.PSK_TYPE.to_bytes(2,'big')
         for index in range(len(PSKS)):
             PSK = PSKS[index]
             current_ticket_age = int(ticket_age[index] / 1000)
@@ -207,19 +208,19 @@ class PSKFunctions:
             if current_ticket_age > lifetime:
                 continue
             transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript)
-            extension_type = tls_constants.PSK_TYPE
+            #extension_type = tls_constants.PSK_TYPE.to_bytes(2,'big')
             
             binder_key = PSK['binder key']
             csuite = PSK['csuite']
-            transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript + extension_type + binders_length + identities_length + identities )
+            transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript_hash + extension_type + binders_length + identities_length + identities )
 
             binder_values = tls_crypto.tls_finished_mac(csuite, binder_key, transcript_hash)
             bin_len = len(binder_values).to_bytes(1,'big')
             binder_keys += (bin_len + binder_values)
 
         offered_psks = identities + binder_keys
-        extension_length = len(offered_psks).to_bytes(2, 'big')
-        extension = extension_length + offered_psks
+        #extension_length = len(offered_psks).to_bytes(2, 'big')
+        extension = extension_type  + offered_psks
         return extension
         
 
