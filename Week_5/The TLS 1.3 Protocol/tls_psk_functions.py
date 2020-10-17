@@ -197,6 +197,8 @@ class PSKFunctions:
         identities_length = identities_length.to_bytes(2,'big')
         binders_length = binders_length.to_bytes(2,'big')
 
+        extension_length = 2 + identities_length + 2 + binders_length
+
         extension_type = tls_constants.PSK_TYPE.to_bytes(2,'big')
         for index in range(len(PSKS)):
             PSK = PSKS[index]
@@ -212,7 +214,7 @@ class PSKFunctions:
             
             binder_key = PSK['binder key']
             csuite = PSK['csuite']
-            transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript_hash + extension_type + binders_length + identities_length + identities )
+            transcript_hash = tls_crypto.tls_transcript_hash(csuite, transcript_hash + extension_type + extension_length + identities_length + identities )
 
             binder_values = tls_crypto.tls_finished_mac(csuite, binder_key, transcript_hash)
             bin_len = len(binder_values).to_bytes(1,'big')
