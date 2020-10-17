@@ -283,8 +283,15 @@ class PSKFunctions:
 
             ticket_nonce = ticket[:8]
             chacha = ChaCha20_Poly1305.new(key = server_static_enc_key, nonce = ticket_nonce)
+            # ticket = ticket_nonce + ctxt + tag
             # ptxt = PSK + ticket_age_add + ticket_lifetime + self.csuite.to_bytes(2,'big')
-            ptxt = chacha.encrypt_and_digest(ticket)
+            # ctxt_and_tag = ticket[8:]
+            tag_length = 16
+            ticket_length = len(ticket)
+            ctxt_length = ticket_length - tag_length
+            ctxt_range = 8 + ctxt_length
+            ctxt = ticket[8 : ctxt_range]
+            ptxt = chacha.decrypt(ctxt)
 
             HKDF = tls_crypto.HKDF(self.csuite)
             length = HKDF.hash_length
