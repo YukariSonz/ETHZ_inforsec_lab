@@ -179,9 +179,8 @@ class PSKFunctions:
             csuite = PSK['csuite']
 
             id_length = len(identity).to_bytes(2,'big')
-            identities += id_length
-            identities += identity
-            identity += obfuscated_ticket_age.to_bytes(4, 'big')
+            psk_identity = id_length + identity + obfuscated_ticket_age.to_bytes(4, 'big')
+            identities += psk_identity
             
             if (csuite == tls_constants.TLS_AES_128_GCM_SHA256) or (csuite == tls_constants.TLS_CHACHA20_POLY1305_SHA256):
                 hash=SHA256.new()
@@ -220,8 +219,8 @@ class PSKFunctions:
         
         offered_psks = identities_length + identities + binders_length + binder_keys
         
-        #extension_length = len(offered_psks).to_bytes(2, 'big')
-        extension = extension_type  + offered_psks
+        extension_length = len(offered_psks).to_bytes(2, 'big')
+        extension = extension_type  + extension_length +  offered_psks
         return extension
         
 
