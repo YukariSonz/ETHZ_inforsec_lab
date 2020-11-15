@@ -26,7 +26,7 @@ var (
 
 func decay(blackl map[string]int){
     for true{
-        time.Sleep(600 * time.Millisecond)
+        time.Sleep(400 * time.Millisecond)
         for key, element := range blackl {
             if element >= 1{
                 blackl[key] = element - 1
@@ -40,7 +40,7 @@ func decay(blackl map[string]int){
 
 func decayAS(blackl map[string]int){
     for true{
-        time.Sleep(600 * time.Millisecond)
+        time.Sleep(400 * time.Millisecond)
         for key, element := range blackl {
             if element >= 3{
                 blackl[key] = element - 3
