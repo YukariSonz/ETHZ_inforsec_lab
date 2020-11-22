@@ -1,0 +1,135 @@
+theory SignedDiffieHellman
+begin
+
+/* Signed Diffie-Hellman protocol:
+   A -> B : A, g^x  (x fresh)
+   B -> A : B, g^y, sign(<A,g^y,g^x>,kB)  (y fresh)
+   A -> B : A, sign(<B,g^x,g^y>,kA)  */
+
+
+/* ----------------- */
+/* Equational theory */
+/* ----------------- */
+
+/* Load the built-in Diffie-Hellman and signature equational theories */
+builtins: diffie-hellman, signing
+
+
+/* ------------------ */
+/* Key infrastructure */
+/* ------------------ */
+
+rule genkey:
+   [ Fr(~kA) ] 
+   -->
+   [ !Key($A, ~kA),
+     !Pk($A, pk(~kA)),
+     Out(pk(~kA)) ]
+
+
+
+/* Question 6 here */
+
+
+//Step 1
+rule Init_1:
+  let gxI = 'g'^~xI in         //A's part of the key. naming conventions: ~n for n:fresh, 'g' for a public constant g
+   [ Fr(~xI) ]                 // generate a fresh value ~xI
+   -->
+   [ Init_1($A, ~xI, gxI),     // we use this fact to record the local state of the role
+     Out(<$A, gxI>) ]          // naming conventions: $A for A:pub
+
+//Step 3
+rule Init_2:
+   let kI = Y^~xI in  
+   [ Init_1($A, ~xI, gxI),
+     !Pk($B, pk(kB)),
+     !Key($A, kA),
+     In( <$B, Y, sign{$A, Y, gxI}kB> )
+   ]
+   --[ Running('Resp','Init',$B , $A , kI), 
+      FinishedI($A),              // record that the initiator has executed her last rule
+       SecretI($A, $B, kI) ]->      // record that the initiator believes Y^~xI should be secret
+   [ Init_2($A, $B, ~xI, gxI, Y, kI), Out(<$A, sign{$B, gxI,Y}kA>) ] // update the state (although we won't use it since this is the last rule)
+   
+/* Responder role */
+//Step 2
+rule Init_3:
+   let gyI = 'g'^~yI in 
+    [ Fr(~yI), 
+      In(<a, X>),
+      !Key($B, kB)
+      ]  
+   --> 
+      [ Out(<$B, gyI, sign{a, gyI, X}kB>),
+        Init_3($B, ~yI, X, gyI)]
+
+//Step 4
+rule Init_4:
+    let gxy = X^~yI in 
+    [ Init_3($B,  ~yI, X, gyI),
+      !Pk($A, pk(kA)) ,
+      In( <$A, sign{$B, X, gyI}kA> )
+     ]
+   --[ Commit('Resp','Init',$B , $A , gxy), 
+        FinishedR($B),
+        SecretR($B, $A, gxy)]->
+   [ Init_4($B, $A, ~yI, gyI, X, gxy)]
+    
+
+
+/* ---------- */
+/* Key Reveal */
+/* ---------- */
+
+
+/* Question 4 here */
+
+
+rule Key_Reveal:
+    [ !Key($A, ~kA) ]
+   --[ Compromised($A) ]->
+   [ Out(~kA) ]
+/* ---------- */
+/* Properties */
+/* ---------- */
+
+/* You can comment out the secrecy and agreement lemmas at first,
+   to first check your model satisfies the executability lemmas */
+
+/* Executability checks */
+lemma executableI:
+exists-trace "Ex #i A. FinishedI(A) @ i & not (Ex #j B. Compromised(B)@j)"
+
+lemma executableR:
+exists-trace "Ex #i B. FinishedR(B) @ i & not (Ex #j B. Compromised(B)@j)"
+
+
+/* Key secrecy */
+lemma key_secrecyI:
+"All #i A B k.
+ (SecretI(A, B, k) @ i &
+  not ((Ex #l. Compromised(A) @ l) | (Ex #m. Compromised(B) @ m)))
+  ==> not (Ex #j. K(k) @ j)"
+
+lemma key_secrecyR:
+"All #i A B k.
+ (SecretR(A, B, k) @ i &
+  not ((Ex #l. Compromised(A) @ l) | (Ex #m. Compromised(B) @ m)))
+  ==> not (Ex #j. K(k) @ j)"
+
+
+/* Agreement of the responder with the initiator:  (Question 7)
+   in all traces, if the (honest) responder B believes to have established
+   a shared key K with an (honest) initiator A,
+   then A has indeed started running a session with B with the same key K */
+lemma agreement:
+"All #i A B k.
+  (Commit('Resp', 'Init', B, A, k) @ i &
+   not ((Ex #l. Compromised(A) @ l) | (Ex #m. Compromised(B) @ m)))
+   ==> (Ex #j. Running('Resp', 'Init', B, A, k) @ j & j < i)"
+
+end
+
+
+

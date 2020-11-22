@@ -1,0 +1,80 @@
+theory UnsignedDiffieHellman
+begin
+/* Unsigned Diffie-Hellman protocol:
+   A -> B : A, g^x  (x fresh)
+   B -> A : B, g^y  (y fresh) */
+
+
+/* ----------------- */
+/* Equational theory */
+/* ----------------- */
+
+/* Load the built-in Diffie-Hellman equational theory */
+builtins: diffie-hellman
+
+
+
+/* -------------- */
+/* Protocol rules */
+/* -------------- */
+
+/* Initiator role */
+rule Init_1:
+  let gxI = 'g'^~xI in         //A's part of the key. naming conventions: ~n for n:fresh, 'g' for a public constant g
+   [ Fr(~xI) ]                 // generate a fresh value ~xI
+   -->
+   [ Init_1($A, ~xI, gxI),     // we use this fact to record the local state of the role
+     Out(<$A, gxI>) ]          // naming conventions: $A for A:pub
+
+rule Init_2:
+  let kI = Y^~xI in            // shared key computed by A
+   [ Init_1($A, ~xI, gxI),
+     In(<b, Y>) ] 
+   --[ FinishedI($A),              // record that the initiator has executed her last rule
+       SecretI($A, b, kI) ]->      // record that the initiator believes Y^~xI should be secret
+   [ Init_2($A, ~xI, gxI, Y, kI) ] // update the state (although we won't use it since this is the last rule)
+
+
+/* Responder role */
+
+/* Question 1 here */
+rule Init_3:
+   let gyI = X^~yI in 
+    [ Fr(~yI), 
+      In(<a, X>) ]  
+   --[ FinishedR($B),            
+       SecretR($B, a, gyI)]-> 
+       [ Out(<$B, gyI>),
+         Init_3($B, ~yI, gyI)]
+    
+
+
+
+/* ---------- */
+/* Properties */
+/* ---------- */
+
+/* You can comment out the secrecy lemmas at first
+   to check that the executability lemmas are satisfied */
+
+/* Executability checks:
+   for each role, there exists a trace where the last rule is executed */
+lemma executableI:
+exists-trace "Ex #i A. FinishedI(A) @ i"
+
+lemma executableR:
+exists-trace "Ex #i B. FinishedR(B) @ i"
+
+
+/* Key secrecy (1st version):  (Question 2)
+   in all traces, if a key is marked as secret by either role, then the attacker does not learn it */
+lemma key_secrecyI:
+"All #i A B k. (SecretI(A,B,k) @ i) ==> not (Ex #j. K(k) @ j)"
+
+lemma key_secrecyR:
+"All #i A B k. (SecretR(A,B,k) @ i) ==> not (Ex #j. K(k) @ j)"
+
+end
+
+
+
