@@ -57,11 +57,11 @@ rule Init_2:
 rule Init_3:
    let gyI = 'g'^~yI in 
     [ Fr(~yI), 
-      In(<a, X>),
+      In(<$A, X>),
       !Key($B, kB)
       ]  
    --> 
-      [ Out(<$B, gyI, sign{a, gyI, X}kB>),
+      [ Out(<$B, gyI, sign{$A, gyI, X}kB>),
         Init_3($B, ~yI, X, gyI)]
 
 //Step 4
