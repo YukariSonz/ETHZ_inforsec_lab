@@ -286,11 +286,11 @@ lemma auth_to_terminal_online:
 
 
 lemma auth_to_issuer:
-  "All PAN Terminal t #k.
-    Commit('Issuer', PAN, <'Card', 'Issuer', t>)@k &
-    Commit('Issuer', Terminal, <'Terminal', 'Issuer', t>)@k
-    ==> (Ex #g. Running(PAN, 'Issuer', <'Card', 'Issuer', t>) @g )
-        & (Ex #m. Running(Terminal, 'Issuer', <'Terminal', 'Issuer', t>)@m )
+  "All PAN Issuer Terminal t #k.
+    Commit(Issuer, PAN, <'Card', 'Issuer', t>)@k &
+    Commit(Issuer, Terminal, <'Terminal', 'Issuer', t>)@k
+    ==> (Ex #g. Running(PAN, Issuer, <'Card', 'Issuer', t>) @g )
+        & (Ex #m. Running(Terminal, Issuer, <'Terminal', 'Issuer', t>)@m )
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ k)"
 
 
