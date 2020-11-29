@@ -97,11 +97,11 @@ rule Card_Send_SDAD:
 
 
 rule Terminal_Verify:
-    let PDOL = <$amount, UN> in
-    [ In(<~nc, SDAD>),
+    let PDOL = <amount, UN> in
+    [ In(<nc, SDAD>),
       Terminal_Received_PAN($Terminal, PDOL, ~PAN),
       !Pk(~PAN, pk(~privkCard) )  ]
-  --[ Eq(verify(SDAD, <~nc, UN>, pk(~privkCard)), true ) ]->
+  --[ Eq(verify(SDAD, <nc, UN>, pk(~privkCard)), true ) ]->
     [Out('GENERATE_AC'),
      Terminal_Sent_GenerateAC($Terminal, ~PAN, PDOL)]
 
@@ -114,6 +114,7 @@ rule Card_Send_TC:
         transaction = <~PAN, PDOL, ATC, AC> in
     [ In('GENERATE_AC'),
       !SharedKey(~PAN, ~mk),
+      !IssuedBy(~PAN, $Issuer),
      Card_Sent_SDAD(~PAN, PDOL, ATC)]
   --[Running(~PAN, 'Terminal', <'Card', 'Terminal', transaction>),
       Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>) ]->
@@ -127,6 +128,7 @@ rule Card_Send_ARQC:
         transaction = <~PAN, PDOL, ATC, AC> in
     [ In('GENERATE_AC'),
       !SharedKey(~PAN, ~mk),
+      !IssuedBy(~PAN, $Issuer),
      Card_Sent_SDAD(~PAN, PDOL, ATC)]
   --[Running(~PAN, 'Terminal', <'Card', 'Terminal', transaction>),
       Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>)]->
@@ -146,7 +148,7 @@ rule Card_Send_ARQC:
 rule Terminal_Receives_TC:
     let transaction = <~PAN, PDOL, ATC, AC> in
     [ Terminal_Sent_GenerateAC($Terminal, ~PAN, PDOL),
-      In(<'TCS', ATC, AC>),
+      In(<'TC', ATC, AC>),
       !IssuedBy(~PAN, $Issuer) ]
   --[ Commit('Terminal', ~PAN, <'Card', 'Terminal', transaction>),
       Honest($Issuer), Honest(~PAN) ]->
@@ -161,15 +163,16 @@ rule Terminal_Receives_ARQC:
       !IssuedBy(~PAN, $Issuer) ]
   --[ Running($Terminal, $Issuer, <'Terminal', 'Issuer', transaction>)]->
     [ Send($Terminal, $Issuer, <~cid, '1'>, <~PAN, PDOL, ATC, AC>) ,
-      Terminal_Received_ARQC($Terminal, ~PAN, PDOL, ATC, AC) ]
+      Terminal_Received_ARQC($Terminal, ~PAN, PDOL, ATC, AC, ~cid) ]
 
 rule Terminal_Accept:
     let transaction = <~PAN, PDOL, ATC, AC>  in 
-    [Recv($Issuer, $Terminal, <channelID, '2'>, <'ACCEPTED', ARPC>),
-     Terminal_Received_ARQC($Terminal, ~PAN, PDOL, ATC, AC) ]
+    [Recv($Issuer, $Terminal, <~cid, '2'>, <'ACCEPTED', ARPC>),
+     Terminal_Received_ARQC($Terminal, ~PAN, PDOL, ATC, AC, ~cid) ]
   --[ Online(),
       Commit('Terminal', ~PAN, <'Card', 'Terminal', transaction>),
-      Commit($Terminal, $Issuer, <'Issuer', 'Terminal', transaction>) ]->
+      Commit($Terminal, $Issuer, <'Issuer', 'Terminal', transaction>),
+      Honest($Issuer), Honest(~PAN)  ]->
     []
 
 
@@ -265,20 +268,20 @@ lemma executable_online:
 lemma auth_to_terminal_offline:
   "All PAN t #i. 
     not(Online()@i) &
-    Commit('Terminal',PAN,t) @i
+    Commit('Terminal', PAN, <'Card', 'Terminal', t>) @i
     ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @j )
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
 
 
 lemma auth_to_terminal_online:
-  "All PAN Issuer t #k. 
-    Commit('Terminal',Issuer ,<'Issuer', 'Terminal', t>) @k &
-    Online()@k &
-    Commit('Terminal',PAN, t)@k 
-    ==> (Ex #j. Running(Issuer , 'Terminal', <'Issuer', 'Terminal', t>) @j )
-        & (Ex #m. Running(PAN, Issuer , <'Card', 'Issuer', t>) @m )
-        & (Ex #s. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @s)
+  "All PAN Terminal Issuer t #k. 
+    Commit(Terminal, Issuer ,<'Issuer', 'Terminal', t>) @k &
+    Online() @k &
+    Commit('Terminal', PAN, <'Card', 'Terminal', t>) @k 
+    ==> ((Ex #j. Running(Issuer , Terminal, <'Issuer', 'Terminal', t>) @j )
+        & (Ex #s. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @s))
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ k)"
+
 
 
 
