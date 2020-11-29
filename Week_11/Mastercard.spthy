@@ -159,8 +159,7 @@ rule Terminal_Receives_ARQC:
       In(<'ARQC', ATC, AC>),
       Fr(~cid),
       !IssuedBy(~PAN, $Issuer) ]
-  --[ Running($Terminal, $Issuer, <'Terminal', 'Issuer', transaction>),
-      Honest($Issuer), Honest(~PAN) ]->
+  --[ Running($Terminal, $Issuer, <'Terminal', 'Issuer', transaction>)]->
     [ Send($Terminal, $Issuer, <~cid, '1'>, <~PAN, PDOL, ATC, AC>) ,
       Terminal_Received_ARQC($Terminal, ~PAN, PDOL, ATC, AC) ]
 
