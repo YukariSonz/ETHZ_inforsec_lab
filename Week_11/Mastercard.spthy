@@ -79,7 +79,7 @@ rule Card_Responds_PAN:
   --> [ Out(<~PAN>),
         Card_Responded_PAN(~PAN, PDOL, ATC) ]
 
-
+//UN is in PDOL, so we need to retrive UN from PDOL
 rule Terminal_Receive_PAN:
     let PDOL = <$amount, UN> in
     [ In(<~PAN>),
@@ -210,7 +210,7 @@ restriction once: //checks that ATC is different per card session
 //              Sanity Check              //
 ////////////////////////////////////////////
 
-
+/*
 lemma executable_offline:
   exists-trace
   "Ex PAN t #i #j.
@@ -234,26 +234,64 @@ lemma executable_online:
     Running(PAN, Issuer, <'Card', 'Issuer', t>)@k &
     Commit(Issuer, PAN, <'Card', 'Issuer', t>)@l &
     not (Ex A #a. Compromise(A)@a)"
+*/
 
 
 
-/*
+//Card
+//Running(~PAN, 'Terminal', <'Card', 'Terminal', transaction>)
+//Running(~PAN, $Issuer, <'Card', 'Issuer', transaction>)
+
+//Terminal
+//Commit('Terminal',PAN,t) 
+
+//Terminal Offline
+//Commit('Terminal', ~PAN, <'Card', 'Terminal', transaction>)
+
+
+//Terminal Online
+//Running($Terminal, $Issuer, <'Terminal', 'Issuer', transaction>)
+//Online(),
+
+//Commit('Terminal', ~PAN, <'Card', 'Terminal', transaction>),
+//Commit($Terminal, $Issuer, <'Issuer', 'Terminal', transaction>) 
+
+
+//Issuer
+//Commit($Issuer, ~PAN, <'Card', 'Issuer', transaction>),
+//Commit($Issuer, $Terminal, <'Terminal', 'Issuer', transaction>),
+//Honest($Issuer), Honest(~PAN)
+//Running($Issuer, $Terminal, <'Issuer', 'Terminal', transaction>) 
+
+
 lemma auth_to_terminal_offline:
   "All PAN t #i. 
+    not(Online()@i) &
     Commit('Terminal',PAN,t) @i
     ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @j )
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
 
+
 lemma auth_to_terminal_online:
-  "All PAN t #i #k. 
-    Commit('Terminal',PAN,t) @i &
-    Online()@k
-    ==> (Ex #j. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @j )
-        | (Ex C #r. Compromise(C) @ r & Honest(C) @ i)"
-*/
+  "All PAN t #k. 
+    Commit('Terminal','Issuer',<'Issuer', 'Terminal', t>) @k &
+    Online()@k &
+    Commit('Terminal',PAN, t)@k 
+    ==> (Ex #j. Running('Issuer', 'Terminal', <'Issuer', 'Terminal', t>) @j )
+        & (Ex #m. Running(PAN, 'Issuer', <'Card', 'Issuer', t>) @m )
+        & (Ex #s. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @s)
+        | (Ex C #r. Compromise(C) @ r & Honest(C) @ k)"
 
 
-//lemma auth_to_issuer
+
+lemma auth_to_issuer:
+  "All PAN t #k.
+    Commit('Issuer', PAN, <'Card', 'Issuer', t>)@k &
+    Commit('Issuer', 'Terminal', <'Terminal', 'Issuer', t>)@k
+    ==> (Ex #g. Running(PAN, 'Issuer', <'Card', 'Issuer', t>) @g )
+        & (Ex #m. Running('Terminal', 'Issuer', <'Terminal', 'Issuer', t>)@m )
+        | (Ex C #r. Compromise(C) @ r & Honest(C) @ k)"
+
 
 /////////////////////////////////////////////////////
 //           Security Properties                   //
