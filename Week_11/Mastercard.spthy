@@ -210,7 +210,7 @@ restriction once: //checks that ATC is different per card session
 //              Sanity Check              //
 ////////////////////////////////////////////
 
-/*
+
 lemma executable_offline:
   exists-trace
   "Ex PAN t #i #j.
@@ -234,7 +234,6 @@ lemma executable_online:
     Running(PAN, Issuer, <'Card', 'Issuer', t>)@k &
     Commit(Issuer, PAN, <'Card', 'Issuer', t>)@l &
     not (Ex A #a. Compromise(A)@a)"
-*/
 
 
 
@@ -273,23 +272,23 @@ lemma auth_to_terminal_offline:
 
 
 lemma auth_to_terminal_online:
-  "All PAN t #k. 
-    Commit('Terminal','Issuer',<'Issuer', 'Terminal', t>) @k &
+  "All PAN Issuer t #k. 
+    Commit('Terminal',Issuer ,<'Issuer', 'Terminal', t>) @k &
     Online()@k &
     Commit('Terminal',PAN, t)@k 
-    ==> (Ex #j. Running('Issuer', 'Terminal', <'Issuer', 'Terminal', t>) @j )
-        & (Ex #m. Running(PAN, 'Issuer', <'Card', 'Issuer', t>) @m )
+    ==> (Ex #j. Running(Issuer , 'Terminal', <'Issuer', 'Terminal', t>) @j )
+        & (Ex #m. Running(PAN, Issuer , <'Card', 'Issuer', t>) @m )
         & (Ex #s. Running(PAN, 'Terminal', <'Card', 'Terminal', t>) @s)
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ k)"
 
 
 
 lemma auth_to_issuer:
-  "All PAN t #k.
+  "All PAN Terminal t #k.
     Commit('Issuer', PAN, <'Card', 'Issuer', t>)@k &
-    Commit('Issuer', 'Terminal', <'Terminal', 'Issuer', t>)@k
+    Commit('Issuer', Terminal, <'Terminal', 'Issuer', t>)@k
     ==> (Ex #g. Running(PAN, 'Issuer', <'Card', 'Issuer', t>) @g )
-        & (Ex #m. Running('Terminal', 'Issuer', <'Terminal', 'Issuer', t>)@m )
+        & (Ex #m. Running(Terminal, 'Issuer', <'Terminal', 'Issuer', t>)@m )
         | (Ex C #r. Compromise(C) @ r & Honest(C) @ k)"
 
 
