@@ -2,7 +2,8 @@
 import sys
 import os 
 
-folder = sys.argv[0]
+
+folder = sys.argv[1]
 
 # correct
 # E:0x40120f:C:11e:jnz 0x401217 
@@ -20,25 +21,28 @@ LAST_LINE = 'E:0x441196:C:2cc:syscall'
 
 CHECKED_LINE = 'E:0x4012a8:C:180:mov eax, 0x1'
 
-counter = 0 
+max_length = 0 
 traces = os.listdir(folder)
 
-
+password_list = [''] * 15
 def crack_password():
-    password_list = [''] * 15
     for trace in traces:
+        word_length = len(trace) - 4
         local_counter = 0
-        trace_file = open(trace)
+        wrong_counter = 0
+        trace_file = open(folder + '/' +trace)
         line = trace_file.readline()
-        while not (line in  LAST_LINE):
-            if line in Critical_Point:
+        while not (LAST_LINE in  line):
+            if Critical_Point in line:
                 line = trace_file.readline()
-                if line in CORRECT_SEQUENCE:
+                if CORRECT_SEQUENCE in line:
                     password_list[local_counter] = trace[local_counter]
-                if line in WRONG_SEQUENCE:
+                if WRONG_SEQUENCE in line:
                     line = trace_file.readline()
+                    wrong_counter += 1
                 local_counter += 1
-            elif line in CHECKED_LINE:
+
+            elif CHECKED_LINE in line:
                 password = ""
                 for char in password_list:
                     if char != '':
@@ -47,12 +51,23 @@ def crack_password():
                 return password
             else:
                 line = trace_file.readline()
-    
+        # Special Case, the correct password is part of the trail
+        if local_counter < word_length:
+            if wrong_counter == 0:
+                password = ""
+                for char in password_list:
+                    if char != '':
+                        password += char
+                password += " complete"
+                return password
+
+
+    password = ""
     for char in password_list:
         if char != '':
             password += char
-        password += " partial"
-        return password
+    password += " partial"
+    return password
 
     
 
