@@ -22,6 +22,7 @@ WRONG_SEQUENCE = "E:0x401217:C:180:mov eax, dword ptr [rbp-0x14]"
 REPEAT = 'E:0x40127e:C:2c6:sub dword ptr [rbp-0x10], 0x1'
 LAST_LINE = 'E:0x441196:C:2cc:syscall'
 END_REPEAT_LINE = 'E:0x401288:C:7:add dword ptr [rbp-0x14], 0x1'
+LENGTH_CHECKING = 'E:0x4012a0:C:180:mov eax, dword ptr [rbp-0xc]'
 
 CHECKED_LINE = 'E:0x4012a8:C:180:mov eax, 0x1'
 FALSE_LINE = 'E:0x4012af:C:180:mov eax, 0x0'
@@ -45,6 +46,7 @@ def crack_password():
     trace_file = open(folder + '/' + max_file)
     line = trace_file.readline()
     local_counter = 0
+    length_equal = False
     while not (LAST_LINE) in line:
         if Critical_Point in line:
             line = trace_file.readline()
@@ -65,6 +67,8 @@ def crack_password():
                 new_character = CHART_LIST[new_index]
                 password_list[local_counter] = new_character
                 local_counter += 1
+        if LENGTH_CHECKING in line:
+            length_equal = True
 
         if CHECKED_LINE in line:
             password = ""
@@ -78,7 +82,7 @@ def crack_password():
             for char in password_list:
                 if char != '':
                     password += char
-            if max_length != local_counter:
+            if length_equal:
                 password += " complete"
             else:
                 password += " partial"
