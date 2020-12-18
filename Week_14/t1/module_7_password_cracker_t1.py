@@ -39,6 +39,7 @@ def crack_password():
         if len(trace) > max_length:
             max_length = len(trace)
             max_file = trace
+    max_length = max_length - 4
     password_list = [''] * max_length
     
     trace_file = open(folder + '/' + max_file)
