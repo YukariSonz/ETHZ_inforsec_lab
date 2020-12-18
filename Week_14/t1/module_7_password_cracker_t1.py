@@ -82,7 +82,7 @@ def crack_password():
             for char in password_list:
                 if char != '':
                     password += char
-            if length_equal:
+            if length_equal or max_length > local_counter:
                 password += " complete"
             else:
                 password += " partial"
