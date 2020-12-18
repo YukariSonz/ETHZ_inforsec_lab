@@ -56,7 +56,6 @@ def crack_password():
                 while not END_REPEAT_LINE in line:
                     if REPEAT in line:
                         counter += 1
-                        print(counter)
                     line = trace_file.readline()
                 character = max_file[local_counter]
                 #Calculate the new character
