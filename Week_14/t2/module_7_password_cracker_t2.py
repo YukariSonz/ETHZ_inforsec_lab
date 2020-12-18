@@ -23,7 +23,7 @@ CHART_LIST = [char for char in ascii_lowercase]
 for char in ascii_lowercase:
     # Something goes here
     trial_password = char * 31
-    generate_trace = generate_trace_base + trial_password
+    generate_trace = generate_trace_base + trial_password + ' > /dev/null 2>&1'
     os.system(generate_trace)
     time.sleep(0.5)
     trace_file = open(T2_trace)
@@ -44,9 +44,4 @@ for char in password_list:
     if char != '':
         password += char
 print(password)
-
-
-
-
-
 
