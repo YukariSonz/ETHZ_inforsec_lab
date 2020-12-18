@@ -21,18 +21,21 @@ LAST_LINE = 'E:0x441196:C:2cc:syscall'
 
 CHECKED_LINE = 'E:0x4012a8:C:180:mov eax, 0x1'
 
-max_length = 0 
+
 traces = os.listdir(folder)
 
-password_list = [''] * 15
 def crack_password():
+    password_list = [''] * 15
+    max_length = 0 
     for trace in traces:
         word_length = len(trace) - 4
+        if word_length > max_length:
+            max_length = word_length
         local_counter = 0
         wrong_counter = 0
         trace_file = open(folder + '/' +trace)
         line = trace_file.readline()
-        while not (LAST_LINE in  line):
+        while not (LAST_LINE in line):
             if Critical_Point in line:
                 line = trace_file.readline()
                 if CORRECT_SEQUENCE in line:
@@ -63,9 +66,12 @@ def crack_password():
 
 
     password = ""
+    password_list = password_list[:max_length]
     for char in password_list:
         if char != '':
             password += char
+        else:
+            password += "_"
     password += " partial"
     return password
 
@@ -75,10 +81,3 @@ def crack_password():
 
 password = crack_password()
 print(password)
-
-
-
-
-
-
-
